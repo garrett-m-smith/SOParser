@@ -12,7 +12,7 @@ Goals:
 
 General equations:
     da/dt = -a + f(Wa + I)
-    I = link_strength * 
+    I = link_strength * features_to_match
 """
 
 import numpy as np
@@ -34,15 +34,15 @@ W_det = np.array([[1, -1, 1, -1],
 # Adding noise should eliminate spurious attractors: HKP 91, Crisanti & Sompolinsky 1987
 #W_det += np.random.uniform(-0.01, 0.01, W_det.shape)
 #np.fill_diagonal(W_det, 0)
-#det_init = np.array([1, -1, 0, 0]) # activating phonology for 'a'
-det_init = np.array([-1, 1, 0, 0]) # activating phonology for 'some'
+det_init = np.array([1, -1, 0, 0]) # activating phonology for 'a'
+#det_init = np.array([-1, 1, 0, 0]) # activating phonology for 'some'
 
 # Noun treelet
 # Dimensions: [+dog, +cat, +a, +some, +sg, +pl]
-noun_patterns = np.array([[1, -1, 1, -1, 1, -1], # dog
-                          [1, -1, -1, 1, -1, 1], # dogs
-                          [-1, 1, 1, -1, 1, -1], # cat
-                          [-1, 1, -1, 1, -1, 1]]).T # cats
+noun_patterns = np.array([[1, -1, 0, 0, 1, -1], # dog
+                          [1, -1, -1, 0, -1, 1], # dogs
+                          [-1, 1, 0, 0, 1, -1], # cat
+                          [-1, 1, -1, 0, -1, 1]]).T # cats
 
 # Setting weights by hand:
 W_noun = np.array([[1, -1, 0, 0, 0, 0],
@@ -112,11 +112,12 @@ for t in range(1, len(tvec)):
         * np.linalg.norm(verb_patterns))
     
     if t == 1500:
-        noun_hist[:,t] += np.array([1, -1, 0, 0, -1, 1]) # phonology for 'dogs'
-#        noun_hist[:,t] += np.array([1, -1, 0, 0, 1, -1]) # phonology for 'dog'
+#        noun_hist[:,t] += np.array([1, -1, 0, 0, -1, 1]) # phonology for 'dogs'
+        noun_hist[:,t] += np.array([1, -1, 0, 0, 1, -1]) # phonology for 'dog'
 
     if t == 3000:
-        verb_hist[:,t] += np.array([-1, 1, 0, 0, -1, 1]) # phonology for 'are'
+#        verb_hist[:,t] += np.array([-1, 1, 0, 0, -1, 1]) # phonology for 'are'
+        verb_hist[:,t] += np.array([1, -1, 0, 0, 1, -1]) # phonology for 'is'
 
 # Plotting
 det_labels = ['a', 'some']
