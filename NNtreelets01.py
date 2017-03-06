@@ -6,21 +6,20 @@ Created on Fri Mar  3 08:30:12 2017
 
 Trying out ANN treelets.
 
-Goals:
-    1. Determiner treelet that settles on 'that' sg. or 'these' pl.: DONE
-    2. Noun treelet that settles on 'dog' or 'dogs': DONE
-    3. Simple verb number agreement: DONE
 
 General equations:
     da/dt = -a + f(Wa + I)
     I = link_strength * features_to_match
 
+features_to_match is the vector of features from the treelet at the other end
+of the link. Thus, feature passing is implemented as a term in the net
+input to the unit, along with the recurrent dynamics (recurrent matrix W,
+within-treelet activations a) 
+
 Next Steps:
-    1. De-kludgify: feature sharing, plotting
-        a. 
-    2. Possibly create classes for Treelet and subclasses for different 
-       treelet types
-    3. Extend noun treelet with PP modifier (and create PP class)
+    1. De-kludgify: re-implement using objects to organize all of the elements
+       involved, esp. matching up features across treelets.
+    2. Extend noun treelet with PP modifier (and create PP class)
     
 Considerations:
     1. How is it handling less than optimal inputs? What states does it end
@@ -51,6 +50,8 @@ def plot_trajectories(tvec, similarity, labels=None):
             plt.plot(tvec, similarity[:, i], label = '{}'.format(labels[i]))
         else:
             plt.plot(tvec, similarity[:, i])
+    plt.xlabel('Time')
+    plt.ylabel('Cosine similarity')
     plt.legend()
     plt.title('Cosine similarity')
     plt.show()
@@ -77,7 +78,7 @@ W_det = np.array([[1, -1, 0, 0, 1, -1],
 #np.fill_diagonal(W_det, 0)
 
 #det_init = np.array([1, -1, 0, 0]) # activating phonology for 'a'
-det_init = np.array([-1, 1, 0, 0]) # activating phonology for 'some'
+det_init = np.array([-1, 1, 0, 0, 0, 0]) # activating phonology for 'some'
 
 # Noun treelet
 # Dimensions: [+dog, +cat, +a, +some, +sg, +pl]
@@ -127,34 +128,54 @@ verb_sim = np.zeros((len(tvec), verb_patterns.shape[1]))
 link_dn = np.zeros(len(tvec))
 link_nv = np.zeros(len(tvec))
 
-for t in range(1, len(tvec)):
-    mask = [0, 1, -2, -1]
-    link_dn[t] = det_hist[:, t-1] @ noun_hist[2:, t-1] / len(det_hist[:, t-1])
-    link_nv[t] = noun_hist[mask, t-1] @ verb_hist[2:, t-1] / len(noun_hist[:, t-1])
-    
+for t in range(1, len(tvec)):    
+    # Still kludge-y
+
+    # Determiner treelet:
+    # Noun representation is: dog, cat, a, some, sg., pl.
+    # Det representation is:  a, some, dog, cat, sg., pl.
     input_from_n = np.zeros(det_init.shape)
-    input_from_n = noun_hist[2:, t-1]
+    input_from_n[0:2,] = noun_hist[2:4, t-1]
+    input_from_n[2:4,] = noun_hist[0:2, t-1]
+    input_from_n[4:,] = noun_hist[4:, t-1]
+    
+    # Link strength between determiner and noun
+    link_dn[t] = (det_hist[:, t-1] @ input_from_n) / len(det_hist[:, t-1])
+
+    # Determiner dynamics:
     det_hist[:, t] = det_hist[:, t-1] + tstep * (-det_hist[:, t-1]
         + np.tanh(W_det @ det_hist[:, t-1] + link_dn[t] * input_from_n))
+
+    # Calculating the similarity:
     det_sim[t,:] = cosine_similarity(det_hist[:, t], det_patterns)
 
+    # Noun treelet
     input_from_det = np.zeros(noun_init.shape)
-    input_from_det[2:] = det_hist[:, t-1]
+    input_from_det[0:2,] = det_hist[2:4, t-1]
+    input_from_det[2:4,] = det_hist[0:2, t-1]
+    input_from_det[4:,] = det_hist[4:, t-1]
     noun_hist[:, t] = noun_hist[:, t-1] + tstep * (-noun_hist[:, t-1] 
         + np.tanh(W_noun @ noun_hist[:, t-1] + link_dn[t] * input_from_det))
     noun_sim[t,:] = cosine_similarity(noun_hist[:, t], noun_patterns)
     
+    # Verb treelet
+    # Verb representation: is, are, dog, cat, sg., pl.
+    # Noun representation is: dog, cat, a, some, sg., pl.
     input_to_verb = np.zeros(verb_init.shape)
-    input_to_verb[2:] = noun_hist[mask, t-1]
+    input_to_verb[2:4,] = noun_hist[0:2, t-1]
+    input_to_verb[4:,] = noun_hist[4:, t-1]
+    link_nv[t] = (verb_hist[:, t-1] @ input_to_verb) / len(verb_hist[:, t-1])
     verb_hist[:, t] = verb_hist[:, t-1] + tstep * (-verb_hist[:, t-1] 
         + np.tanh(W_verb @ verb_hist[:, t-1] + link_nv[t] * input_to_verb))
     verb_sim[t,:] = cosine_similarity(verb_hist[:, t], verb_patterns)
     
-    if t == 1500:
+    # Introduce the noun at t = 250
+    if t == 2500:
         noun_hist[:,t] += np.array([1, -1, 0, 0, -1, 1]) # phonology for 'dogs'
 #        noun_hist[:,t] += np.array([1, -1, 0, 0, 1, -1]) # phonology for 'dog'
 
-    if t == 3000:
+    # Introduce verb at t = 500
+    if t == 5000:
         verb_hist[:,t] += np.array([-1, 1, 0, 0, -1, 1]) # phonology for 'are'
 #        verb_hist[:,t] += np.array([1, -1, 0, 0, 1, -1]) # phonology for 'is'
 
