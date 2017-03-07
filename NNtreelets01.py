@@ -56,6 +56,42 @@ def plot_trajectories(tvec, similarity, labels=None):
     plt.title('Cosine similarity')
     plt.show()
 
+class Treelet(object):
+    def __init__(self, nlex, ndependents, nlicensors, nmorph):
+        self.nlex = nlex
+        self.ndependents = ndependents
+        self.nlicensors = nlicensors
+        self.nmorph = nmorph
+        self.state = np.zeros(nlex + ndependents + nlicensors + nmorph)
+        self.nfeatures = len(self.state)
+        self.idx_lex = np.arange(0, nlex)
+        self.idx_dependent = np.arange(nlex, nlex + ndependents)
+        self.idx_licensor = np.arange(nlex + ndependents, nlex + ndependents + nmorph)
+        self.idx_morph = np.arange(nlex + ndependents + nmorph, len(self.state))
+        
+        self.W_rec = np.zeros((self.nfeatures, self.nfeatures))
+        
+    def set_state(self, vals):
+        assert vals.shape == self.state.shape
+        self.state = vals
+        return self.state
+    
+    def set_recurrent_weights(self):
+        #assert W.shape == self.W_rec.shape
+        #self.W_rec = W
+        #return self.W_rec
+        W = np.zeros(self.W_rec.shape)
+        W[np.ix_(self.idx_lex, self.idx_lex)] = -np.ones((self.nlex, self.nlex))
+        W[np.ix_(self.idx_dependent, self.idx_dependent)] = -np.ones((self.ndependents, self.ndependents))
+        W[np.ix_(self.idx_licensor, self.idx_licensor)] = -np.ones((self.nlicensors, self.nlicensors))
+        W[np.ix_(self.idx_morph, self.idx_morph)] = -np.ones((self.nmorph, self.nmorph))
+        np.fill_diagonal(W, 1)
+        self.W_rec = W
+        return self.W_rec
+        
+    def random_initial_state(self, noise_mag):
+        noisy_init = np.random.uniform(-noise_mag, noise_mag, self.state.shape)
+        self.set_state(noisy_init)
 
 ##### Setting up treelets #####
 # Determiner treelet
