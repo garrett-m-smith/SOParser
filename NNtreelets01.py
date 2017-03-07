@@ -4,8 +4,6 @@ Created on Fri Mar  3 08:30:12 2017
 
 @author: garrettsmith
 
-Trying out ANN treelets.
-
 
 General equations:
     da/dt = -a + f(Wa + I)
@@ -27,6 +25,12 @@ Considerations:
     2. Relatedly, can I define a harmony/energy function for the whole system?
     3. What initial conditions, time constants, etc., make functional parsing
        possible?
+
+Possible changes:
+    1. Switch to sigmoid activation fn. (would necessitate rethinking 
+       representation codings and recurrent weight matrices)
+    2. Only do similarity calculations on relevant dimensions in a non-kludgy
+       way...
 """
 
 import numpy as np
@@ -34,11 +38,17 @@ import matplotlib.pyplot as plt
 
 
 ##### Defining utility functions #####
+#def sig(x):
+#    return 1 / (1 + np.exp(-x))
+    
+def shepard_similarity(vec, pattern_mat):
+    """Calculate the similarity s(x, y) = exp(-|x - y|**2) (Shepard, 1987)"""
+    return np.exp(-np.linalg.norm(pattern_mat - vec)**2)
+
 def cosine_similarity(vec, pattern_mat):
     """Calculate cosine similarity between a vector and each column in a 
     matrix. Thus, each pattern should be stored as column vectors in the
     matrix."""
-    #assert a.shape == b.shape, "Vectors are of different sizes"
     dot_prod = vec @ pattern_mat
     denom = np.linalg.norm(vec) * np.linalg.norm(pattern_mat, axis = 0)
     return dot_prod / denom
@@ -51,9 +61,9 @@ def plot_trajectories(tvec, similarity, labels=None):
         else:
             plt.plot(tvec, similarity[:, i])
     plt.xlabel('Time')
-    plt.ylabel('Cosine similarity')
+    plt.ylabel('Similarity')
     plt.legend()
-    plt.title('Cosine similarity')
+    plt.title('Similarity')
     plt.show()
 
 class Treelet(object):
@@ -97,15 +107,16 @@ class Treelet(object):
 # Determiner treelet
 # Dimensions: [+a, +some, dog, cat +sg, +pl]
 det_patterns = np.array([[1, -1, 0, 0, 1, -1], # a
-                         [-1, 1, 0, 0, 0, 0]]).T # some
+                         [-1, 1, 0, 0, -1, 1]]).T # these
+#det_patterns = (1 + det_patterns) * 0.5
 
 # Setting weights by hand:
 W_det = np.array([[1, -1, 0, 0, 1, -1],
-                  [-1, 1, 0, 0, 0, 0],
+                  [-1, 1, 0, 0, -1, 1],
                   [0, 0, 1, -1, 0, 0],
                   [0, 0, -1, 1, 0, 0],
-                  [1, 0, 0, 0, 1, -1],
-                  [-1, 0, 0, 0, -1, 1]])    
+                  [1, -1, 0, 0, 1, -1],
+                  [-1, 1, 0, 0, -1, 1]])    
 # Hebbian/covariance matrix for weights
 #W_det = (det_patterns @ det_patterns.T) / det_patterns.shape[1]
 # Adding noise should eliminate spurious attractors: HKP 91,
@@ -115,6 +126,7 @@ W_det = np.array([[1, -1, 0, 0, 1, -1],
 
 #det_init = np.array([1, -1, 0, 0]) # activating phonology for 'a'
 det_init = np.array([-1, 1, 0, 0, 0, 0]) # activating phonology for 'some'
+#det_init = (1 + det_init) * 0.5
 
 # Noun treelet
 # Dimensions: [+dog, +cat, +a, +some, +sg, +pl]
@@ -122,6 +134,7 @@ noun_patterns = np.array([[1, -1, 0, 0, 1, -1], # dog
                           [1, -1, -1, 0, -1, 1], # dogs
                           [-1, 1, 0, 0, 1, -1], # cat
                           [-1, 1, -1, 0, -1, 1]]).T # cats
+#noun_patterns = (1 + noun_patterns) * 0.5
 
 # Setting weights by hand:
 W_noun = np.array([[1, -1, 0, 0, 0, 0],
@@ -134,10 +147,12 @@ W_noun = np.array([[1, -1, 0, 0, 0, 0],
 #W_noun += np.random.uniform(-0.01, 0.01, W_noun.shape)
 #np.fill_diagonal(W_noun, 0)
 noun_init = np.random.uniform(-0.001, 0.001, noun_patterns[:,0].shape)
+#noun_init = np.random.uniform(0, 0.002, noun_patterns[:,0].shape)
 
 # Verb treelet: is, are, dog, cat, sg, pl
 verb_patterns = np.array([[1, -1, 0, 0, 1, -1], # is
                           [-1, 1, 0, 0, -1, 1]]).T # are
+#verb_patterns = (1 + verb_patterns) * 0.5
 W_verb = np.array([[1, -1, 0, 0, 1, -1],
                    [-1, 1, 0, 0, -1, 1],
                    [0, 0, 1, -1, 0, 0],
@@ -145,6 +160,7 @@ W_verb = np.array([[1, -1, 0, 0, 1, -1],
                    [1, -1, 0, 0, 1, -1],
                    [-1, 1, 0, 0, -1, 1]])
 verb_init = np.random.uniform(-0.001, 0.001, verb_patterns[:,0].shape)
+#verb_init = np.random.uniform(0, 0.002, verb_patterns[:,0].shape)
 
 
 ##### Running the whole system #####
@@ -157,7 +173,7 @@ noun_hist[:, 0] = noun_init
 verb_hist[:, 0] = verb_init
 
 tstep = 0.001
-det_sim = np.zeros((len(tvec), det_patterns.shape[1]))
+det_sim = np.zeros((len(tvec), 2))
 noun_sim = np.zeros((len(tvec), noun_patterns.shape[1]))
 verb_sim = np.zeros((len(tvec), verb_patterns.shape[1]))
 
@@ -181,9 +197,12 @@ for t in range(1, len(tvec)):
     # Determiner dynamics:
     det_hist[:, t] = det_hist[:, t-1] + tstep * (-det_hist[:, t-1]
         + np.tanh(W_det @ det_hist[:, t-1] + link_dn[t] * input_from_n))
+#    det_hist[:, t] = det_hist[:, t-1] + tstep * (-det_hist[:, t-1]
+#        + sig(W_det @ det_hist[:, t-1] + link_dn[t] * input_from_n))
 
     # Calculating the similarity:
-    det_sim[t,:] = cosine_similarity(det_hist[:, t], det_patterns)
+#    det_sim[t,:] = cosine_similarity(det_hist[:, t], det_patterns)
+    det_sim[t,:] = np.exp(-np.linalg.norm(det_hist[np.ix_([0, 1, -2, -1]),t] - det_patterns[np.ix_([0, 1, -2, -1]),].squeeze().T, axis = 1)**2)
 
     # Noun treelet
     input_from_det = np.zeros(noun_init.shape)
@@ -192,7 +211,10 @@ for t in range(1, len(tvec)):
     input_from_det[4:,] = det_hist[4:, t-1]
     noun_hist[:, t] = noun_hist[:, t-1] + tstep * (-noun_hist[:, t-1] 
         + np.tanh(W_noun @ noun_hist[:, t-1] + link_dn[t] * input_from_det))
-    noun_sim[t,:] = cosine_similarity(noun_hist[:, t], noun_patterns)
+#    noun_hist[:, t] = noun_hist[:, t-1] + tstep * (-noun_hist[:, t-1] 
+#        + sig(W_noun @ noun_hist[:, t-1] + link_dn[t] * input_from_det))
+#    noun_sim[t,:] = cosine_similarity(noun_hist[:, t], noun_patterns)
+    noun_sim[t,:] = np.exp(-np.linalg.norm(noun_hist[np.ix_([0, 1, -2, -1]),t] - noun_patterns[np.ix_([0, 1, -2, -1]),].squeeze().T, axis = 1)**2)
     
     # Verb treelet
     # Verb representation: is, are, dog, cat, sg., pl.
@@ -203,7 +225,10 @@ for t in range(1, len(tvec)):
     link_nv[t] = (verb_hist[:, t-1] @ input_to_verb) / len(verb_hist[:, t-1])
     verb_hist[:, t] = verb_hist[:, t-1] + tstep * (-verb_hist[:, t-1] 
         + np.tanh(W_verb @ verb_hist[:, t-1] + link_nv[t] * input_to_verb))
-    verb_sim[t,:] = cosine_similarity(verb_hist[:, t], verb_patterns)
+#    verb_hist[:, t] = verb_hist[:, t-1] + tstep * (-verb_hist[:, t-1] 
+#        + sig(W_verb @ verb_hist[:, t-1] + link_nv[t] * input_to_verb))
+#    verb_sim[t,:] = cosine_similarity(verb_hist[:, t], verb_patterns)
+    verb_sim[t,:] = np.exp(-np.linalg.norm(verb_hist[np.ix_([0, 1, -2, -1]),t] - verb_patterns[np.ix_([0, 1, -2, -1]),].squeeze().T, axis = 1)**2)
     
     # Introduce the noun at t = 250
     if t == 2500:
@@ -217,7 +242,7 @@ for t in range(1, len(tvec)):
 
 
 ##### Plotting #####
-det_labels = ['a', 'some']
+det_labels = ['a', 'these']
 plot_trajectories(tvec, det_sim, det_labels)
 
 noun_labels = ['dog', 'dogs', 'cat', 'cats']
