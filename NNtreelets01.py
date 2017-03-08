@@ -4,9 +4,6 @@ Created on Fri Mar  3 08:30:12 2017
 
 @author: garrettsmith
 
-Trying out ANN treelets.
-
-
 General equations:
     da/dt = -a + f(Wa + I)
     I = link_strength * features_to_match
@@ -27,6 +24,12 @@ Considerations:
     2. Relatedly, can I define a harmony/energy function for the whole system?
     3. What initial conditions, time constants, etc., make functional parsing
        possible?
+
+Possible changes:
+    1. Switch to sigmoid activation fn. (would necessitate rethinking 
+       representation codings and recurrent weight matrices)
+    2. Only do similarity calculations on relevant dimensions in a non-kludgy
+       way...
 """
 
 import numpy as np
@@ -34,11 +37,20 @@ import matplotlib.pyplot as plt
 
 
 ##### Defining utility functions #####
+#def sig(x):
+#    return 1 / (1 + np.exp(-x))
+
+def scalar_proj(vec, pattern_mat):
+    return (vec @ pattern_mat) / np.linalg.norm(pattern_mat, axis = 0)
+
+def shepard_similarity(vec, pattern_mat):
+    """Calculate the similarity s(x, y) = exp(-|x - y|**2) (Shepard, 1987)"""
+    return np.exp(-np.linalg.norm(pattern_mat - vec)**2)
+
 def cosine_similarity(vec, pattern_mat):
     """Calculate cosine similarity between a vector and each column in a 
     matrix. Thus, each pattern should be stored as column vectors in the
     matrix."""
-    #assert a.shape == b.shape, "Vectors are of different sizes"
     dot_prod = vec @ pattern_mat
     denom = np.linalg.norm(vec) * np.linalg.norm(pattern_mat, axis = 0)
     return dot_prod / denom
@@ -51,11 +63,47 @@ def plot_trajectories(tvec, similarity, labels=None):
         else:
             plt.plot(tvec, similarity[:, i])
     plt.xlabel('Time')
-    plt.ylabel('Cosine similarity')
+    plt.ylabel('Similarity')
     plt.legend()
-    plt.title('Cosine similarity')
+    plt.title('Similarity')
     plt.show()
 
+class Treelet(object):
+    def __init__(self, nlex, ndependents, nlicensors, nmorph):
+        self.nlex = nlex
+        self.ndependents = ndependents
+        self.nlicensors = nlicensors
+        self.nmorph = nmorph
+        self.state = np.zeros(nlex + ndependents + nlicensors + nmorph)
+        self.nfeatures = len(self.state)
+        self.idx_lex = np.arange(0, nlex)
+        self.idx_dependent = np.arange(nlex, nlex + ndependents)
+        self.idx_licensor = np.arange(nlex + ndependents, nlex + ndependents + nmorph)
+        self.idx_morph = np.arange(nlex + ndependents + nmorph, len(self.state))
+        
+        self.W_rec = np.zeros((self.nfeatures, self.nfeatures))
+        
+    def set_state(self, vals):
+        assert vals.shape == self.state.shape
+        self.state = vals
+        return self.state
+    
+    def set_recurrent_weights(self):
+        #assert W.shape == self.W_rec.shape
+        #self.W_rec = W
+        #return self.W_rec
+        W = np.zeros(self.W_rec.shape)
+        W[np.ix_(self.idx_lex, self.idx_lex)] = -np.ones((self.nlex, self.nlex))
+        W[np.ix_(self.idx_dependent, self.idx_dependent)] = -np.ones((self.ndependents, self.ndependents))
+        W[np.ix_(self.idx_licensor, self.idx_licensor)] = -np.ones((self.nlicensors, self.nlicensors))
+        W[np.ix_(self.idx_morph, self.idx_morph)] = -np.ones((self.nmorph, self.nmorph))
+        np.fill_diagonal(W, 1)
+        self.W_rec = W
+        return self.W_rec
+        
+    def random_initial_state(self, noise_mag):
+        noisy_init = np.random.uniform(-noise_mag, noise_mag, self.state.shape)
+        self.set_state(noisy_init)
 
 ##### Setting up treelets #####
 # Determiner treelet
@@ -112,7 +160,8 @@ verb_init = np.random.uniform(-0.001, 0.001, verb_patterns[:,0].shape)
 
 
 ##### Running the whole system #####
-tvec = np.arange(0.0, 1000.0, 0.1)
+tstep = 0.01
+tvec = np.arange(0.0, 100.0, tstep)
 det_hist = np.zeros((len(det_init), len(tvec)))
 noun_hist = np.zeros((len(noun_init), len(tvec)))
 verb_hist = np.zeros((len(verb_init), len(tvec)))
@@ -120,7 +169,6 @@ det_hist[:,0] = det_init
 noun_hist[:, 0] = noun_init
 verb_hist[:, 0] = verb_init
 
-tstep = 0.001
 det_sim = np.zeros((len(tvec), det_patterns.shape[1]))
 noun_sim = np.zeros((len(tvec), noun_patterns.shape[1]))
 verb_sim = np.zeros((len(tvec), verb_patterns.shape[1]))
