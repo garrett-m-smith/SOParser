@@ -69,7 +69,7 @@ W_det = np.array([[1, -1, 0, 0, 1, -1],
                   [0, 0, 1, -1, 0, 0],
                   [0, 0, -1, 1, 0, 0],
                   [1, 0, 0, 0, 1, -1],
-                  [-1, 0, 0, 0, -1, 1]])    
+                  [-1, 0, 0, 0, -1, 1]])
 # Hebbian/covariance matrix for weights
 #W_det = (det_patterns @ det_patterns.T) / det_patterns.shape[1]
 # Adding noise should eliminate spurious attractors: HKP 91,
