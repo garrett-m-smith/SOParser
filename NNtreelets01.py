@@ -40,7 +40,10 @@ import matplotlib.pyplot as plt
 ##### Defining utility functions #####
 #def sig(x):
 #    return 1 / (1 + np.exp(-x))
-    
+
+def scalar_proj(vec, pattern_mat):
+    return (vec @ pattern_mat) / np.linalg.norm(pattern_mat, axis = 0)
+
 def shepard_similarity(vec, pattern_mat):
     """Calculate the similarity s(x, y) = exp(-|x - y|**2) (Shepard, 1987)"""
     return np.exp(-np.linalg.norm(pattern_mat - vec)**2)
@@ -116,7 +119,8 @@ W_det = np.array([[1, -1, 0, 0, 1, -1],
                   [0, 0, 1, -1, 0, 0],
                   [0, 0, -1, 1, 0, 0],
                   [1, -1, 0, 0, 1, -1],
-                  [-1, 1, 0, 0, -1, 1]])    
+                  [-1, 1, 0, 0, -1, 1]])   
+W_det = W_det * 1/det_patterns.shape[1]
 # Hebbian/covariance matrix for weights
 #W_det = (det_patterns @ det_patterns.T) / det_patterns.shape[1]
 # Adding noise should eliminate spurious attractors: HKP 91,
@@ -143,6 +147,7 @@ W_noun = np.array([[1, -1, 0, 0, 0, 0],
                    [0, 0, -1, 1, 0, 0],
                    [0, 0, 1, 0, 1, -1],
                    [0, 0, -1, 0, -1, 1]])
+W_noun = W_noun * 1/noun_patterns.shape[1]
 #W_noun = (noun_patterns @ noun_patterns.T) / noun_patterns.shape[1]
 #W_noun += np.random.uniform(-0.01, 0.01, W_noun.shape)
 #np.fill_diagonal(W_noun, 0)
@@ -159,12 +164,14 @@ W_verb = np.array([[1, -1, 0, 0, 1, -1],
                    [0, 0, -1, 1, 0, 0],
                    [1, -1, 0, 0, 1, -1],
                    [-1, 1, 0, 0, -1, 1]])
+W_verb = W_verb * 1/verb_patterns.shape[1]
 verb_init = np.random.uniform(-0.001, 0.001, verb_patterns[:,0].shape)
 #verb_init = np.random.uniform(0, 0.002, verb_patterns[:,0].shape)
 
 
 ##### Running the whole system #####
-tvec = np.arange(0.0, 1000.0, 0.1)
+tstep = 0.01
+tvec = np.arange(0.0, 100.0, tstep)
 det_hist = np.zeros((len(det_init), len(tvec)))
 noun_hist = np.zeros((len(noun_init), len(tvec)))
 verb_hist = np.zeros((len(verb_init), len(tvec)))
@@ -172,7 +179,6 @@ det_hist[:,0] = det_init
 noun_hist[:, 0] = noun_init
 verb_hist[:, 0] = verb_init
 
-tstep = 0.001
 det_sim = np.zeros((len(tvec), 2))
 noun_sim = np.zeros((len(tvec), noun_patterns.shape[1]))
 verb_sim = np.zeros((len(tvec), verb_patterns.shape[1]))
@@ -202,7 +208,8 @@ for t in range(1, len(tvec)):
 
     # Calculating the similarity:
 #    det_sim[t,:] = cosine_similarity(det_hist[:, t], det_patterns)
-    det_sim[t,:] = np.exp(-np.linalg.norm(det_hist[np.ix_([0, 1, -2, -1]),t] - det_patterns[np.ix_([0, 1, -2, -1]),].squeeze().T, axis = 1)**2)
+#    det_sim[t,:] = scalar_proj(det_hist[:,t], det_patterns)
+    det_sim[t,:] = (1 + cosine_similarity(det_hist[:,t], det_patterns)) / 2
 
     # Noun treelet
     input_from_det = np.zeros(noun_init.shape)
@@ -214,7 +221,7 @@ for t in range(1, len(tvec)):
 #    noun_hist[:, t] = noun_hist[:, t-1] + tstep * (-noun_hist[:, t-1] 
 #        + sig(W_noun @ noun_hist[:, t-1] + link_dn[t] * input_from_det))
 #    noun_sim[t,:] = cosine_similarity(noun_hist[:, t], noun_patterns)
-    noun_sim[t,:] = np.exp(-np.linalg.norm(noun_hist[np.ix_([0, 1, -2, -1]),t] - noun_patterns[np.ix_([0, 1, -2, -1]),].squeeze().T, axis = 1)**2)
+    noun_sim[t,:] = scalar_proj(noun_hist[:,t], noun_patterns)
     
     # Verb treelet
     # Verb representation: is, are, dog, cat, sg., pl.
@@ -228,7 +235,7 @@ for t in range(1, len(tvec)):
 #    verb_hist[:, t] = verb_hist[:, t-1] + tstep * (-verb_hist[:, t-1] 
 #        + sig(W_verb @ verb_hist[:, t-1] + link_nv[t] * input_to_verb))
 #    verb_sim[t,:] = cosine_similarity(verb_hist[:, t], verb_patterns)
-    verb_sim[t,:] = np.exp(-np.linalg.norm(verb_hist[np.ix_([0, 1, -2, -1]),t] - verb_patterns[np.ix_([0, 1, -2, -1]),].squeeze().T, axis = 1)**2)
+    verb_sim[t,:] = scalar_proj(verb_hist[:,t], verb_patterns)
     
     # Introduce the noun at t = 250
     if t == 2500:
