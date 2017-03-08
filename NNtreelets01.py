@@ -13,10 +13,18 @@ of the link. Thus, feature passing is implemented as a term in the net
 input to the unit, along with the recurrent dynamics (recurrent matrix W,
 within-treelet activations a) 
 
+Major issue: doesn't reliably form parses. Especially the verb often gets 
+stuck in terminal attractor early on and can't rescue itself. Treelets aren't
+communicating very well. Or rather, they communicate too fast. For now, I'll
+try to dekludgify the info passing via links, but if that doesn't work, I'll
+have to try something else.
+
 Next Steps:
     1. De-kludgify: re-implement using objects to organize all of the elements
        involved, esp. matching up features across treelets.
-    2. Extend noun treelet with PP modifier (and create PP class)
+    2. Expand vocab
+    3. General link competition
+    4. Extend noun treelet with PP modifier (and create PP class)
     
 Considerations:
     1. How is it handling less than optimal inputs? What states does it end
@@ -45,7 +53,7 @@ def scalar_proj(vec, pattern_mat):
 
 def shepard_similarity(vec, pattern_mat):
     """Calculate the similarity s(x, y) = exp(-|x - y|**2) (Shepard, 1987)"""
-    return np.exp(-np.linalg.norm(pattern_mat - vec)**2)
+    return np.exp(-np.linalg.norm(pattern_mat - vec, axis = 1)**2,)
 
 def cosine_similarity(vec, pattern_mat):
     """Calculate cosine similarity between a vector and each column in a 
@@ -89,6 +97,8 @@ class Treelet(object):
         return self.state
     
     def set_recurrent_weights(self):
+        """Set recurrent weights with inhibitory connections within banks of
+        units. Does not yet set weights between feature banks!"""
         #assert W.shape == self.W_rec.shape
         #self.W_rec = W
         #return self.W_rec
@@ -107,9 +117,9 @@ class Treelet(object):
 
 ##### Setting up treelets #####
 # Determiner treelet
-# Dimensions: [+a, +some, dog, cat +sg, +pl]
+# Dimensions: [+a, +these, dog, cat +sg, +pl]
 det_patterns = np.array([[1, -1, 0, 0, 1, -1], # a
-                         [-1, 1, 0, 0, 0, 0]]).T # some
+                         [-1, 1, 0, 0, -1, 1]]).T # these
 
 # Setting weights by hand:
 W_det = np.array([[1, -1, 0, 0, 1, -1],
@@ -194,8 +204,10 @@ for t in range(1, len(tvec)):
     det_hist[:, t] = det_hist[:, t-1] + tstep * (-det_hist[:, t-1]
         + np.tanh(W_det @ det_hist[:, t-1] + link_dn[t] * input_from_n))
 
+
     # Calculating the similarity:
-    det_sim[t,:] = cosine_similarity(det_hist[:, t], det_patterns)
+#    det_sim[t,:] = cosine_similarity(det_hist[:, t], det_patterns)
+    det_sim[t,:] = shepard_similarity(det_hist[:, t] ,det_patterns.T)
 
     # Noun treelet
     input_from_det = np.zeros(noun_init.shape)
@@ -204,7 +216,8 @@ for t in range(1, len(tvec)):
     input_from_det[4:,] = det_hist[4:, t-1]
     noun_hist[:, t] = noun_hist[:, t-1] + tstep * (-noun_hist[:, t-1] 
         + np.tanh(W_noun @ noun_hist[:, t-1] + link_dn[t] * input_from_det))
-    noun_sim[t,:] = cosine_similarity(noun_hist[:, t], noun_patterns)
+#    noun_sim[t,:] = cosine_similarity(noun_hist[:, t], noun_patterns)
+    noun_sim[t,:] = shepard_similarity(noun_hist[:,t], noun_patterns.T)
     
     # Verb treelet
     # Verb representation: is, are, dog, cat, sg., pl.
@@ -215,7 +228,8 @@ for t in range(1, len(tvec)):
     link_nv[t] = (verb_hist[:, t-1] @ input_to_verb) / len(verb_hist[:, t-1])
     verb_hist[:, t] = verb_hist[:, t-1] + tstep * (-verb_hist[:, t-1] 
         + np.tanh(W_verb @ verb_hist[:, t-1] + link_nv[t] * input_to_verb))
-    verb_sim[t,:] = cosine_similarity(verb_hist[:, t], verb_patterns)
+#    verb_sim[t,:] = cosine_similarity(verb_hist[:, t], verb_patterns)
+    verb_sim[t,:] = shepard_similarity(verb_hist[:, t], verb_patterns.T)
     
     # Introduce the noun at t = 250
     if t == 2500:
@@ -229,6 +243,24 @@ for t in range(1, len(tvec)):
 
 
 ##### Plotting #####
+#det_dims = ['a', 'these', 'dog', 'cat', 'sg', 'pl']
+#for d in range(len(det_dims)):
+#    plt.plot(det_hist[d,:].T, label = det_dims[d])
+#plt.legend()
+#plt.show()
+#
+#noun_dims = ['dog', 'cat', 'a', 'these', 'sg', 'pl']
+#for d in range(len(noun_dims)):
+#    plt.plot(noun_hist[d,:].T, label = noun_dims[d])
+#plt.legend()
+#plt.show()
+#
+#verb_dims = ['is', 'are', 'dog', 'cat', 'sg', 'pl']
+#for d in range(len(verb_dims)):
+#    plt.plot(verb_hist[d,:].T, label = verb_dims[d])
+#plt.legend()
+#plt.show()
+
 det_labels = ['a', 'some']
 plot_trajectories(tvec, det_sim, det_labels)
 
@@ -245,3 +277,9 @@ plt.show()
 plt.plot(tvec, link_nv)
 plt.title('Noun-verb link strength')
 plt.show()
+
+#ls = ['a', 'these', 'dog', 'cat', 'sg', 'pl']
+#for l in range(len(ls)):
+#    plt.plot(det_hist[l,:].T, label = ls[l])
+#plt.legend()
+#plt.show()
