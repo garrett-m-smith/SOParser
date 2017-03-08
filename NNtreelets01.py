@@ -20,8 +20,8 @@ try to dekludgify the info passing via links, but if that doesn't work, I'll
 have to try something else.
 
 Next Steps:
-    1. De-kludgify: re-implement using objects to organize all of the elements
-       involved, esp. matching up features across treelets.
+    1.Currently, the treelets have different structures: need to make sure
+       all have lex, licensor, dependent, & morph feature banks.
     2. Expand vocab
     3. General link competition
     4. Extend noun treelet with PP modifier (and create PP class)
@@ -76,44 +76,44 @@ def plot_trajectories(tvec, similarity, labels=None):
     plt.title('Similarity')
     plt.show()
 
-class Treelet(object):
-    def __init__(self, nlex, ndependents, nlicensors, nmorph):
-        self.nlex = nlex
-        self.ndependents = ndependents
-        self.nlicensors = nlicensors
-        self.nmorph = nmorph
-        self.state = np.zeros(nlex + ndependents + nlicensors + nmorph)
-        self.nfeatures = len(self.state)
-        self.idx_lex = np.arange(0, nlex)
-        self.idx_dependent = np.arange(nlex, nlex + ndependents)
-        self.idx_licensor = np.arange(nlex + ndependents, nlex + ndependents + nmorph)
-        self.idx_morph = np.arange(nlex + ndependents + nmorph, len(self.state))
-        
-        self.W_rec = np.zeros((self.nfeatures, self.nfeatures))
-        
-    def set_state(self, vals):
-        assert vals.shape == self.state.shape
-        self.state = vals
-        return self.state
-    
-    def set_recurrent_weights(self):
-        """Set recurrent weights with inhibitory connections within banks of
-        units. Does not yet set weights between feature banks!"""
-        #assert W.shape == self.W_rec.shape
-        #self.W_rec = W
-        #return self.W_rec
-        W = np.zeros(self.W_rec.shape)
-        W[np.ix_(self.idx_lex, self.idx_lex)] = -np.ones((self.nlex, self.nlex))
-        W[np.ix_(self.idx_dependent, self.idx_dependent)] = -np.ones((self.ndependents, self.ndependents))
-        W[np.ix_(self.idx_licensor, self.idx_licensor)] = -np.ones((self.nlicensors, self.nlicensors))
-        W[np.ix_(self.idx_morph, self.idx_morph)] = -np.ones((self.nmorph, self.nmorph))
-        np.fill_diagonal(W, 1)
-        self.W_rec = W
-        return self.W_rec
-        
-    def random_initial_state(self, noise_mag):
-        noisy_init = np.random.uniform(-noise_mag, noise_mag, self.state.shape)
-        self.set_state(noisy_init)
+#class Treelet(object):
+#    def __init__(self, nlex, ndependents, nlicensors, nmorph):
+#        self.nlex = nlex
+#        self.ndependents = ndependents
+#        self.nlicensors = nlicensors
+#        self.nmorph = nmorph
+#        self.state = np.zeros(nlex + ndependents + nlicensors + nmorph)
+#        self.nfeatures = len(self.state)
+#        self.idx_lex = np.arange(0, nlex)
+#        self.idx_dependent = np.arange(nlex, nlex + ndependents)
+#        self.idx_licensor = np.arange(nlex + ndependents, nlex + ndependents + nmorph)
+#        self.idx_morph = np.arange(nlex + ndependents + nmorph, len(self.state))
+#        
+#        self.W_rec = np.zeros((self.nfeatures, self.nfeatures))
+#        
+#    def set_state(self, vals):
+#        assert vals.shape == self.state.shape
+#        self.state = vals
+#        return self.state
+#    
+#    def set_recurrent_weights(self):
+#        """Set recurrent weights with inhibitory connections within banks of
+#        units. Does not yet set weights between feature banks!"""
+#        #assert W.shape == self.W_rec.shape
+#        #self.W_rec = W
+#        #return self.W_rec
+#        W = np.zeros(self.W_rec.shape)
+#        W[np.ix_(self.idx_lex, self.idx_lex)] = -np.ones((self.nlex, self.nlex))
+#        W[np.ix_(self.idx_dependent, self.idx_dependent)] = -np.ones((self.ndependents, self.ndependents))
+#        W[np.ix_(self.idx_licensor, self.idx_licensor)] = -np.ones((self.nlicensors, self.nlicensors))
+#        W[np.ix_(self.idx_morph, self.idx_morph)] = -np.ones((self.nmorph, self.nmorph))
+#        np.fill_diagonal(W, 1)
+#        self.W_rec = W
+#        return self.W_rec
+#        
+#    def random_initial_state(self, noise_mag):
+#        noisy_init = np.random.uniform(-noise_mag, noise_mag, self.state.shape)
+#        self.set_state(noisy_init)
 
 ##### Setting up treelets #####
 # Determiner treelet
@@ -186,16 +186,17 @@ verb_sim = np.zeros((len(tvec), verb_patterns.shape[1]))
 link_dn = np.zeros(len(tvec))
 link_nv = np.zeros(len(tvec))
 
+idx_lex = [0, 1]
+idx_dep = [4, 5]
+idx_lic = [2, 3]
+idx_morph = [-2, -1]
+
 for t in range(1, len(tvec)):    
     # Still kludge-y
 
     # Determiner treelet:
-    # Noun representation is: dog, cat, a, some, sg., pl.
-    # Det representation is:  a, some, dog, cat, sg., pl.
     input_from_n = np.zeros(det_init.shape)
-    input_from_n[0:2,] = noun_hist[2:4, t-1]
-    input_from_n[2:4,] = noun_hist[0:2, t-1]
-    input_from_n[4:,] = noun_hist[4:, t-1]
+    input_from_n[2:] = np.append(noun_hist[idx_dep, t-1], noun_hist[idx_morph, t-1])
     
     # Link strength between determiner and noun
     link_dn[t] = (det_hist[:, t-1] @ input_from_n) / len(det_hist[:, t-1])
@@ -211,20 +212,19 @@ for t in range(1, len(tvec)):
 
     # Noun treelet
     input_from_det = np.zeros(noun_init.shape)
-    input_from_det[0:2,] = det_hist[2:4, t-1]
-    input_from_det[2:4,] = det_hist[0:2, t-1]
-    input_from_det[4:,] = det_hist[4:, t-1]
+    input_from_det[2:] = np.append(det_hist[idx_lic, t-1], det_hist[idx_morph, t-1])
+    input_from_verb = np.zeros(noun_init.shape)
+    input_from_verb[idx_lex] = verb_hist[idx_dep, t-1]
+    input_from_verb[idx_morph] = verb_hist[idx_morph, t-1]
     noun_hist[:, t] = noun_hist[:, t-1] + tstep * (-noun_hist[:, t-1] 
-        + np.tanh(W_noun @ noun_hist[:, t-1] + link_dn[t] * input_from_det))
+        + np.tanh(W_noun @ noun_hist[:, t-1] + link_dn[t] * input_from_det
+                  + link_nv[t] * input_from_verb))
 #    noun_sim[t,:] = cosine_similarity(noun_hist[:, t], noun_patterns)
     noun_sim[t,:] = shepard_similarity(noun_hist[:,t], noun_patterns.T)
     
     # Verb treelet
-    # Verb representation: is, are, dog, cat, sg., pl.
-    # Noun representation is: dog, cat, a, some, sg., pl.
     input_to_verb = np.zeros(verb_init.shape)
-    input_to_verb[2:4,] = noun_hist[0:2, t-1]
-    input_to_verb[4:,] = noun_hist[4:, t-1]
+    input_to_verb[2:] = np.append(noun_hist[idx_lex, t-1], noun_hist[idx_morph, t-1])
     link_nv[t] = (verb_hist[:, t-1] @ input_to_verb) / len(verb_hist[:, t-1])
     verb_hist[:, t] = verb_hist[:, t-1] + tstep * (-verb_hist[:, t-1] 
         + np.tanh(W_verb @ verb_hist[:, t-1] + link_nv[t] * input_to_verb))
@@ -232,12 +232,12 @@ for t in range(1, len(tvec)):
     verb_sim[t,:] = shepard_similarity(verb_hist[:, t], verb_patterns.T)
     
     # Introduce the noun at t = 250
-    if t == 2500:
+    if tvec[t] == 20:
         noun_hist[:,t] += np.array([1, -1, 0, 0, -1, 1]) # phonology for 'dogs'
 #        noun_hist[:,t] += np.array([1, -1, 0, 0, 1, -1]) # phonology for 'dog'
 
     # Introduce verb at t = 500
-    if t == 5000:
+    if tvec[t] == 40:
         verb_hist[:,t] += np.array([-1, 1, 0, 0, -1, 1]) # phonology for 'are'
 #        verb_hist[:,t] += np.array([1, -1, 0, 0, 1, -1]) # phonology for 'is'
 
