@@ -17,6 +17,10 @@ I think the treelet dynamics are going too fast, but the parse formation seems
 to be getting more reliable, probably due to the corrected interactions between
 the treelets.
 
+Another problem: it basically always gets garden pathed due to the random
+initial conditions... Although it does get to the right parse once
+phonological form comes in.
+
 Next Steps:
     1. Expand vocab
     2. General link competition
