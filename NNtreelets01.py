@@ -118,16 +118,18 @@ def plot_trajectories(tvec, similarity, labels=None):
 ##### Setting up treelets #####
 # Determiner treelet
 # Dimensions: [+a, +these, dog, cat +sg, +pl]
-det_patterns = np.array([[1, -1, 0, 0, 1, -1], # a
-                         [-1, 1, 0, 0, -1, 1]]).T # these
+det_patterns = np.array([[1, -1, -1, 0, 0, 1, -1], # a
+                         [-1, 1, -1, 0, 0, -1, 1], # these
+                         [-1, -1, 1, 0, 0, 1, -1]]).T # this
 
 # Setting weights by hand:
-W_det = np.array([[1, -1, 0, 0, 1, -1],
-                  [-1, 1, 0, 0, 0, 0],
-                  [0, 0, 1, -1, 0, 0],
-                  [0, 0, -1, 1, 0, 0],
-                  [1, 0, 0, 0, 1, -1],
-                  [-1, 0, 0, 0, -1, 1]])
+#W_det = np.array([[1, -1, 0, 0, 1, -1],
+#                  [-1, 1, 0, 0, 0, 0],
+#                  [0, 0, 1, -1, 0, 0],
+#                  [0, 0, -1, 1, 0, 0],
+#                  [1, 0, 0, 0, 1, -1],
+#                  [-1, 0, 0, 0, -1, 1]])
+W_det = np.sign(det_patterns @ det_patterns.T)
 # Hebbian/covariance matrix for weights
 #W_det = (det_patterns @ det_patterns.T) / det_patterns.shape[1]
 # Adding noise should eliminate spurious attractors: HKP 91,
@@ -136,7 +138,7 @@ W_det = np.array([[1, -1, 0, 0, 1, -1],
 #np.fill_diagonal(W_det, 0)
 
 #det_init = np.array([1, -1, 0, 0]) # activating phonology for 'a'
-det_init = np.array([-1, 1, 0, 0, 0, 0]) # activating phonology for 'some'
+det_init = np.array([-1, 1, -1, 0, 0, 0, 0]) # activating phonology for 'some'
 
 # Noun treelet
 # Dimensions: [+dog, +cat, +a, +some, +sg, +pl]
@@ -190,13 +192,14 @@ idx_lex = [0, 1]
 idx_dep = [4, 5]
 idx_lic = [2, 3]
 idx_morph = [-2, -1]
+idx_lexmorph = [0, 1, -2, -1]
 
 for t in range(1, len(tvec)):    
     # Still kludge-y
 
     # Determiner treelet:
     input_from_n = np.zeros(det_init.shape)
-    input_from_n[2:] = np.append(noun_hist[idx_dep, t-1], noun_hist[idx_morph, t-1])
+    input_from_n[3:] = np.append(noun_hist[idx_dep, t-1], noun_hist[idx_morph, t-1])
     
     # Link strength between determiner and noun
     link_dn[t] = (det_hist[:, t-1] @ input_from_n) / len(det_hist[:, t-1])
@@ -208,7 +211,7 @@ for t in range(1, len(tvec)):
 
     # Calculating the similarity:
 #    det_sim[t,:] = cosine_similarity(det_hist[:, t], det_patterns)
-    det_sim[t,:] = shepard_similarity(det_hist[:, t] ,det_patterns.T)
+    det_sim[t,:] = shepard_similarity(det_hist[idx_lexmorph, t] ,det_patterns[idx_lexmorph,].T)
 
     # Noun treelet
     input_from_det = np.zeros(noun_init.shape)
@@ -220,7 +223,7 @@ for t in range(1, len(tvec)):
         + np.tanh(W_noun @ noun_hist[:, t-1] + link_dn[t] * input_from_det
                   + link_nv[t] * input_from_verb))
 #    noun_sim[t,:] = cosine_similarity(noun_hist[:, t], noun_patterns)
-    noun_sim[t,:] = shepard_similarity(noun_hist[:,t], noun_patterns.T)
+    noun_sim[t,:] = shepard_similarity(noun_hist[idx_lexmorph,t], noun_patterns[idx_lexmorph,].T)
     
     # Verb treelet
     input_to_verb = np.zeros(verb_init.shape)
@@ -229,7 +232,7 @@ for t in range(1, len(tvec)):
     verb_hist[:, t] = verb_hist[:, t-1] + tstep * (-verb_hist[:, t-1] 
         + np.tanh(W_verb @ verb_hist[:, t-1] + link_nv[t] * input_to_verb))
 #    verb_sim[t,:] = cosine_similarity(verb_hist[:, t], verb_patterns)
-    verb_sim[t,:] = shepard_similarity(verb_hist[:, t], verb_patterns.T)
+    verb_sim[t,:] = shepard_similarity(verb_hist[idx_lexmorph, t], verb_patterns[idx_lexmorph,].T)
     
     # Introduce the noun at t = 250
     if tvec[t] == 20:
@@ -261,7 +264,7 @@ for t in range(1, len(tvec)):
 #plt.legend()
 #plt.show()
 
-det_labels = ['a', 'some']
+det_labels = ['a', 'these', 'this']
 plot_trajectories(tvec, det_sim, det_labels)
 
 noun_labels = ['dog', 'dogs', 'cat', 'cats']
