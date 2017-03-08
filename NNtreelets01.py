@@ -13,18 +13,14 @@ of the link. Thus, feature passing is implemented as a term in the net
 input to the unit, along with the recurrent dynamics (recurrent matrix W,
 within-treelet activations a) 
 
-Major issue: doesn't reliably form parses. Especially the verb often gets 
-stuck in terminal attractor early on and can't rescue itself. Treelets aren't
-communicating very well. Or rather, they communicate too fast. For now, I'll
-try to dekludgify the info passing via links, but if that doesn't work, I'll
-have to try something else.
+I think the treelet dynamics are going too fast, but the parse formation seems
+to be getting more reliable, probably due to the corrected interactions between
+the treelets.
 
 Next Steps:
-    1.Currently, the treelets have different structures: need to make sure
-       all have lex, licensor, dependent, & morph feature banks.
-    2. Expand vocab
-    3. General link competition
-    4. Extend noun treelet with PP modifier (and create PP class)
+    1. Expand vocab
+    2. General link competition
+    3. Extend noun treelet with PP modifier (and create PP class)
     
 Considerations:
     1. How is it handling less than optimal inputs? What states does it end
@@ -45,9 +41,6 @@ import matplotlib.pyplot as plt
 
 
 ##### Defining utility functions #####
-#def sig(x):
-#    return 1 / (1 + np.exp(-x))
-
 def scalar_proj(vec, pattern_mat):
     return (vec @ pattern_mat) / np.linalg.norm(pattern_mat, axis = 0)
 
@@ -131,76 +124,51 @@ Det.state_hist = np.zeros((len(tvec), Det.nfeatures))
 det_patterns = np.array([[1, -1, -1, 0, 0, 1, -1], # a
                          [-1, 1, -1, 0, 0, -1, 1], # these
                          [-1, -1, 1, 0, 0, 1, -1]]).T # this
-Det.W_rec = np.sign(det_patterns @ det_patterns.T)
-
-#det_init = np.array([1, -1, 0, 0]) # activating phonology for 'a'
+Det.W_rec = np.array([[1, -1, -1, 0, 0, 1, -1],
+                      [-1, 1, -1, 0, 0, -1, 1],
+                      [-1, -1, 1, 0, 0, 1, -1],
+                      [0, 0, 0, 1, -1, 0, 0],
+                      [0, 0, 0, -1, 1, 0, 0],
+                      [1, -1, 1, 0, 0, 1, -1],
+                      [-1, 1, -1, 0, 0, -1, 1]])
 det_init = np.array([-1, 1, -1, 0, 0, -1, 1]) # activating phonology for 'these'
 Det.set_initial_state(det_init)
 
-# Setting weights by hand:
-#W_det = np.array([[1, -1, 0, 0, 1, -1],
-#                  [-1, 1, 0, 0, 0, 0],
-#                  [0, 0, 1, -1, 0, 0],
-#                  [0, 0, -1, 1, 0, 0],
-#                  [1, 0, 0, 0, 1, -1],
-#                  [-1, 0, 0, 0, -1, 1]])
-#W_det = np.sign(det_patterns @ det_patterns.T)
-# Hebbian/covariance matrix for weights
-#W_det = (det_patterns @ det_patterns.T) / det_patterns.shape[1]
-# Adding noise should eliminate spurious attractors: HKP 91,
-# Crisanti & Sompolinsky 1987
-#W_det += np.random.uniform(-0.01, 0.01, W_det.shape)
-#np.fill_diagonal(W_det, 0)
-
-# Noun treelet
-# Dimensions: [+dog, +cat, +a, +some, +sg, +pl]
+# Noun treelet:
 Noun = Treelet(2, 3, 2, 2)
 Noun.state_hist = np.zeros((len(tvec), Noun.nfeatures))
 noun_patterns = np.array([[1, -1, 0, 0, 0, 0, 0, 1, -1], # dog
                           [1, -1, 0, 0, 0, 0, 0, -1, 1], # dogs
                           [-1, 1, 0, 0, 0, 0, 0, 1, -1], # cat
                           [-1, 1, 0, 0, 0, 0, 0, -1, 1]]).T # cats
-Noun.W_rec = np.sign(noun_patterns @ noun_patterns.T)
+Noun.W_rec = np.array([[1, -1, 0, 0, 0, 0, 0, 0, 0],
+                       [-1, 1, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 1, -1, -1, 0, 0, 0, 0],
+                       [0, 0, -1, 1, -1, 0, 0, 0, 0],
+                       [0, 0, -1, -1, 1, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 1, -1, 1, -1],
+                       [0, 0, 0, 0, 0, -1, 1, -1, 1],
+                       [0, 0, 0, 0, 0, 1, -1, 1, -1],
+                       [0, 0, 0, 0, 0, -1, 1, -1, 1]])
 Noun.set_initial_state(np.random.uniform(-0.01, 0.01, Noun.nfeatures))
 
-# Setting weights by hand:
-#W_noun = np.array([[1, -1, 0, 0, 0, 0],
-#                   [-1, 1, 0, 0, 0, 0],
-#                   [0, 0, 1, -1, 1, -1],
-#                   [0, 0, -1, 1, 0, 0],
-#                   [0, 0, 1, 0, 1, -1],
-#                   [0, 0, -1, 0, -1, 1]])
-#W_noun = (noun_patterns @ noun_patterns.T) / noun_patterns.shape[1]
-#W_noun += np.random.uniform(-0.01, 0.01, W_noun.shape)
-#np.fill_diagonal(W_noun, 0)
-#noun_init = np.random.uniform(-0.001, 0.001, noun_patterns[:,0].shape)
-
-# Verb treelet: is, are, dog, cat, sg, pl
+# Verb treelet
 Verb = Treelet(2, 2, 0, 2)
 Verb.state_hist = np.zeros((len(tvec), Verb.nfeatures))
 verb_patterns = np.array([[1, -1, 0, 0, 1, -1], # is
                           [-1, 1, 0, 0, -1, 1]]).T # are
-Verb.W_rec = np.sign(verb_patterns @ verb_patterns.T)
+Verb.W_rec = np.array([[1, -1, 0, 0, 1, -1],
+                       [-1, 1, 0,0, -1, 1],
+                       [0, 0, 1, -1, 0, 0],
+                       [0, 0, -1, 1, 0, 0],
+                       [1, -1, 0, 0, 1, -1],
+                       [-1, 1, 0, 0, -1, 1]])
 Verb.set_initial_state(np.random.uniform(-0.01, 0.01, Verb.nfeatures))
     
-#W_verb = np.array([[1, -1, 0, 0, 1, -1],
-#                   [-1, 1, 0, 0, -1, 1],
-#                   [0, 0, 1, -1, 0, 0],
-#                   [0, 0, -1, 1, 0, 0],
-#                   [1, -1, 0, 0, 1, -1],
-#                   [-1, 1, 0, 0, -1, 1]])
-#verb_init = np.random.uniform(-0.001, 0.001, verb_patterns[:,0].shape)
 
 
 ##### Running the whole system #####
 tstep = 0.01
-#tvec = np.arange(0.0, 100.0, tstep)
-#det_hist = np.zeros((len(det_init), len(tvec)))
-#noun_hist = np.zeros((len(noun_init), len(tvec)))
-#verb_hist = np.zeros((len(verb_init), len(tvec)))
-#det_hist[:,0] = det_init
-#noun_hist[:, 0] = noun_init
-#verb_hist[:, 0] = verb_init
 
 det_sim = np.zeros((len(tvec), det_patterns.shape[1]))
 noun_sim = np.zeros((len(tvec), noun_patterns.shape[1]))
@@ -209,37 +177,23 @@ verb_sim = np.zeros((len(tvec), verb_patterns.shape[1]))
 link_dn = np.zeros(len(tvec))
 link_nv = np.zeros(len(tvec))
 
-#idx_lex = [0, 1]
-#idx_lex_det = 
-#idx_dep = [4, 5]
-#idx_lic = [2, 3]
-#idx_morph = [-2, -1]
-#idx_lexmorph = [0, 1, -2, -1]
-
 for t in range(1, len(tvec)):    
     # Still kludge-y
 
     # Determiner treelet:
     input_from_n = np.zeros(Det.nfeatures)
-#    input_from_n[3:] = np.append(noun_hist[idx_dep, t-1], noun_hist[idx_morph, t-1])
     input_from_n[Det.idx_licensor] = Noun.state_hist[t-1, Noun.idx_lex]
     input_from_n[Det.idx_lex] = Noun.state_hist[t-1, Noun.idx_dependent]
     input_from_n[Det.idx_morph] = Noun.state_hist[t-1, Noun.idx_morph]
     
     # Link strength between determiner and noun
-#    link_dn[t] = (det_hist[:, t-1] @ input_from_n) / len(det_hist[:, t-1])
     link_dn[t] = (Det.state_hist[t-1,] @ input_from_n) / Det.nfeatures
 
     # Determiner dynamics:
-#    det_hist[:, t] = det_hist[:, t-1] + tstep * (-det_hist[:, t-1]
-#        + np.tanh(W_det @ det_hist[:, t-1] + link_dn[t] * input_from_n))
     Det.state_hist[t,] = Det.state_hist[t-1,] + tstep * (-Det.state_hist[t-1,]
         + np.tanh(Det.W_rec @ Det.state_hist[t-1,] + link_dn[t] * input_from_n))
 
-
     # Calculating the similarity:
-#    det_sim[t,:] = cosine_similarity(det_hist[:, t], det_patterns)
-#    det_sim[t,:] = shepard_similarity(det_hist[idx_lexmorph, t] ,det_patterns[idx_lexmorph,].T)
     det_sim[t,:] = shepard_similarity(Det.state_hist[t,] ,det_patterns.T)
 
     # Noun treelet
@@ -247,71 +201,38 @@ for t in range(1, len(tvec)):
     input_from_det[Noun.idx_lex] = Det.state_hist[t, Det.idx_licensor]
     input_from_det[Noun.idx_dependent] = Det.state_hist[t, Det.idx_lex]
     input_from_det[Noun.idx_morph] = Det.state_hist[t, Det.idx_morph]
-#    input_from_det[2:] = np.append(det_hist[idx_lic, t-1], det_hist[idx_morph, t-1])
+
     input_from_verb = np.zeros(Noun.nfeatures)
     input_from_verb[Noun.idx_licensor] = Verb.state_hist[t, Verb.idx_lex]
     input_from_verb[Noun.idx_lex] = Verb.state_hist[t, Verb.idx_dependent]
     input_from_verb[Noun.idx_morph] = Verb.state_hist[t, Verb.idx_morph]
-#    input_from_verb[idx_lex] = verb_hist[idx_dep, t-1]
-#    input_from_verb[idx_morph] = verb_hist[idx_morph, t-1]
-    
-#    noun_hist[:, t] = noun_hist[:, t-1] + tstep * (-noun_hist[:, t-1] 
-#        + np.tanh(W_noun @ noun_hist[:, t-1] + link_dn[t] * input_from_det
-#                  + link_nv[t] * input_from_verb))
+
     Noun.state_hist[t,] = Noun.state_hist[t-1,] + tstep * (-Noun.state_hist[t-1,]
         + np.tanh(Noun.W_rec @ Noun.state_hist[t-1,] + link_dn[t] * input_from_det
                   + link_nv[t] * input_from_verb))
-#    noun_sim[t,:] = cosine_similarity(noun_hist[:, t], noun_patterns)
-#    noun_sim[t,] = shepard_similarity(noun_hist[idx_lexmorph,t], noun_patterns[idx_lexmorph,].T)
+    
     noun_sim[t,:] = shepard_similarity(Noun.state_hist[t,], noun_patterns.T)
     
     # Verb treelet
     input_to_verb = np.zeros(Verb.nfeatures)
-#    input_to_verb[2:] = np.append(noun_hist[idx_lex, t-1], noun_hist[idx_morph, t-1])
     input_to_verb[Verb.idx_lex] = Noun.state_hist[t, Noun.idx_licensor]
     input_to_verb[Verb.idx_dependent] = Noun.state_hist[t, Noun.idx_lex]
-#    link_nv[t] = (verb_hist[:, t-1] @ input_to_verb) / len(verb_hist[:, t-1])
     link_nv[t] = (Verb.state_hist[t-1,] @ input_to_verb) / Verb.nfeatures
-#    verb_hist[:, t] = verb_hist[:, t-1] + tstep * (-verb_hist[:, t-1] 
-#        + np.tanh(W_verb @ verb_hist[:, t-1] + link_nv[t] * input_to_verb))
+
     Verb.state_hist[t,] = Verb.state_hist[t-1,] + tstep * (-Verb.state_hist[t-1,]
         + np.tanh(Verb.W_rec @ Verb.state_hist[t-1,] + link_nv[t] * input_to_verb))
-#    verb_sim[t,:] = cosine_similarity(verb_hist[:, t], verb_patterns)
-#    verb_sim[t,:] = shepard_similarity(verb_hist[idx_lexmorph, t], verb_patterns[idx_lexmorph,].T)
     verb_sim[t,] = shepard_similarity(Verb.state_hist[t,], verb_patterns.T)
     
     # Introduce the noun at t = 250
     if tvec[t] == 20:
-#        noun_hist[:,t] += np.array([1, -1, 0, 0, -1, 1]) # phonology for 'dogs'
         Noun.state_hist[t,] = noun_patterns[:,1] # phonology for 'dogs'
-#        noun_hist[:,t] += np.array([1, -1, 0, 0, 1, -1]) # phonology for 'dog'
 
     # Introduce verb at t = 500
     if tvec[t] == 40:
-#        verb_hist[:,t] += np.array([-1, 1, 0, 0, -1, 1]) # phonology for 'are'
         Verb.state_hist[t,] = verb_patterns[:,1] # phonology for 'are'
-#        verb_hist[:,t] += np.array([1, -1, 0, 0, 1, -1]) # phonology for 'is'
 
 
 ##### Plotting #####
-#det_dims = ['a', 'these', 'dog', 'cat', 'sg', 'pl']
-#for d in range(len(det_dims)):
-#    plt.plot(det_hist[d,:].T, label = det_dims[d])
-#plt.legend()
-#plt.show()
-#
-#noun_dims = ['dog', 'cat', 'a', 'these', 'sg', 'pl']
-#for d in range(len(noun_dims)):
-#    plt.plot(noun_hist[d,:].T, label = noun_dims[d])
-#plt.legend()
-#plt.show()
-#
-#verb_dims = ['is', 'are', 'dog', 'cat', 'sg', 'pl']
-#for d in range(len(verb_dims)):
-#    plt.plot(verb_hist[d,:].T, label = verb_dims[d])
-#plt.legend()
-#plt.show()
-
 det_labels = ['a', 'these', 'this']
 plot_trajectories(tvec, det_sim, det_labels)
 
@@ -328,9 +249,3 @@ plt.show()
 plt.plot(tvec, link_nv)
 plt.title('Noun-verb link strength')
 plt.show()
-
-#ls = ['a', 'these', 'dog', 'cat', 'sg', 'pl']
-#for l in range(len(ls)):
-#    plt.plot(det_hist[l,:].T, label = ls[l])
-#plt.legend()
-#plt.show()
