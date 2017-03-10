@@ -13,9 +13,18 @@ of the link. Thus, feature passing is implemented as a term in the net
 input to the unit, along with the recurrent dynamics (recurrent matrix W,
 within-treelet activations a) 
 
-I think the treelet dynamics are going too fast, but the parse formation seems
-to be getting more reliable, probably due to the corrected interactions between
-the treelets.
+Problem with +=: by the time ti's time to add the next phonological form, the
+treelets are basically already at their attractors. The treelet dynamics are
+pushing too fast. So using += moves the treelet away from some useful attractor
+to some weird mixed state. Attempts to fix:
+    1. resecaling recurrent weights (* 1/nfeat). Origin becomes only stable fp.
+    2. Setting W_rec diagonal to 0 or 0.1 works!
+
+Possible problem: It's not adding new lexical items that is making
+parse formation less stable, it's changing the weight matrices to make the 
+different feature banks disconnected. I think this means that I'll need a
+separate lexical representation (lexical unit) for each morphological form:
+'is', 'are', 'sing', 'sings', etc.
 
 Next Steps:
     1. Expand vocab
@@ -70,13 +79,13 @@ def plot_trajectories(tvec, similarity, labels=None):
     plt.show()
 
 class Treelet(object):
-    def __init__(self, nlex, ndependents, nlicensors, nmorph):
+    def __init__(self, nlex, ndependents, nlicensors, nmorph, dim_names):
         self.nlex = nlex
         self.ndependents = ndependents
         self.nlicensors = nlicensors
         self.nmorph = nmorph
-        self.state = np.zeros(nlex + ndependents + nlicensors + nmorph)
-        self.nfeatures = len(self.state)
+#        self.state = np.zeros(nlex + ndependents + nlicensors + nmorph)
+        self.nfeatures = nlex + ndependents + nlicensors + nmorph #len(self.state)
         self.idx_lex = np.arange(0, nlex)
         self.idx_dependent = np.arange(nlex, nlex + ndependents)
         self.idx_licensor = np.arange(nlex + ndependents, nlex + ndependents + nmorph)
@@ -84,6 +93,7 @@ class Treelet(object):
         # Kludgy, but...
         self.idx_morph = [-2, -1]
         self.state_hist = None
+        self.dim_names = dim_names
         
         self.W_rec = np.zeros((self.nfeatures, self.nfeatures))
         
@@ -115,11 +125,17 @@ class Treelet(object):
         assert len(vec) == self.nfeatures, 'Wrong length initial state'
         assert self.state_hist is not None, 'state_hist not initialized'
         self.state_hist[0,] = vec
+    
+    def print_state(self, t = -1):
+        for n in range(len(self.dim_names)):
+            print('{}:\t{}'.format(self.dim_names[n], self.state_hist[t,n]))
+        print('\n')
 
 ##### Setting up treelets #####
 tstep = 0.01
-tvec = np.arange(0.0, 100.0, tstep)
-Det = Treelet(3, 0, 2, 2)
+tvec = np.arange(0.0, 10.0, tstep)
+det_dims = ['a', 'these', 'this', 'dog', 'cat', 'sg', 'pl']
+Det = Treelet(3, 0, 2, 2, det_dims)
 Det.state_hist = np.zeros((len(tvec), Det.nfeatures))
 det_patterns = np.array([[1, -1, -1, 0, 0, 1, -1], # a
                          [-1, 1, -1, 0, 0, -1, 1], # these
@@ -131,11 +147,14 @@ Det.W_rec = np.array([[1, -1, -1, 0, 0, 1, -1],
                       [0, 0, 0, -1, 1, 0, 0],
                       [1, -1, 1, 0, 0, 1, -1],
                       [-1, 1, -1, 0, 0, -1, 1]])
+np.fill_diagonal(Det.W_rec, 0)
 det_init = np.array([-1, 1, -1, 0, 0, -1, 1]) # activating phonology for 'these'
+#det_init = np.array([-1, -1, 1, 0, 0, 1, -1]) # activating phonology for 'this'
 Det.set_initial_state(det_init)
 
 # Noun treelet:
-Noun = Treelet(2, 3, 2, 2)
+noun_dims = ['dog', 'cat', 'a', 'these', 'this', 'is', 'are', 'sg', 'pl']
+Noun = Treelet(2, 3, 2, 2, noun_dims)
 Noun.state_hist = np.zeros((len(tvec), Noun.nfeatures))
 noun_patterns = np.array([[1, -1, 0, 0, 0, 0, 0, 1, -1], # dog
                           [1, -1, 0, 0, 0, 0, 0, -1, 1], # dogs
@@ -150,26 +169,37 @@ Noun.W_rec = np.array([[1, -1, 0, 0, 0, 0, 0, 0, 0],
                        [0, 0, 0, 0, 0, -1, 1, -1, 1],
                        [0, 0, 0, 0, 0, 1, -1, 1, -1],
                        [0, 0, 0, 0, 0, -1, 1, -1, 1]])
+np.fill_diagonal(Noun.W_rec, 0)
 Noun.set_initial_state(np.random.uniform(-0.01, 0.01, Noun.nfeatures))
 
 # Verb treelet
-Verb = Treelet(2, 2, 0, 2)
+verb_dims = ['is', 'are', 'dog', 'cat', 'sg', 'pl']
+Verb = Treelet(2, 2, 0, 2, verb_dims)
 Verb.state_hist = np.zeros((len(tvec), Verb.nfeatures))
 verb_patterns = np.array([[1, -1, 0, 0, 1, -1], # is
                           [-1, 1, 0, 0, -1, 1]]).T # are
+#verb_patterns = np.array([[1, -1, 0, 0, 1, -1], # is
+#                          [1, -1, 0, 0, -1, 1], # are
+#                          [-1, 1, 0, 0, 1, -1], # sings
+#                          [-1, 1, 0, 0, -1, 1]]).T # sing
 Verb.W_rec = np.array([[1, -1, 0, 0, 1, -1],
                        [-1, 1, 0,0, -1, 1],
                        [0, 0, 1, -1, 0, 0],
                        [0, 0, -1, 1, 0, 0],
                        [1, -1, 0, 0, 1, -1],
                        [-1, 1, 0, 0, -1, 1]])
+np.fill_diagonal(Verb.W_rec, 0)
+#Verb.W_rec = np.array([[1, -1, 0, 0, 1, -1],
+#                       [-1, 1, 0,0, -1, 1],
+#                       [0, 0, 1, -1, 0, 0],
+#                       [0, 0, -1, 1, 0, 0],
+#                       [1, -1, 0, 0, 1, -1],
+#                       [-1, 1, 0, 0, -1, 1]])
 Verb.set_initial_state(np.random.uniform(-0.01, 0.01, Verb.nfeatures))
     
 
 
 ##### Running the whole system #####
-tstep = 0.01
-
 det_sim = np.zeros((len(tvec), det_patterns.shape[1]))
 noun_sim = np.zeros((len(tvec), noun_patterns.shape[1]))
 verb_sim = np.zeros((len(tvec), verb_patterns.shape[1]))
@@ -224,12 +254,17 @@ for t in range(1, len(tvec)):
     verb_sim[t,] = shepard_similarity(Verb.state_hist[t,], verb_patterns.T)
     
     # Introduce the noun at t = 250
-    if tvec[t] == 20:
-        Noun.state_hist[t,] = noun_patterns[:,1] # phonology for 'dogs'
+    if tvec[t] == 2:
+        # For some reason, += (which should make sense) causes unstable 
+        # parsing, but only when diagonals are 1. Problem disappears if
+        # W_rec[i,i] is 0 or 0.1...
+#        Noun.state_hist[t,] = noun_patterns[:,1] # phonology for 'dogs'
+        Noun.state_hist[t,] += noun_patterns[:,1] # phonology for 'dogs'
 
     # Introduce verb at t = 500
-    if tvec[t] == 40:
-        Verb.state_hist[t,] = verb_patterns[:,1] # phonology for 'are'
+    if tvec[t] == 5:
+#        Verb.state_hist[t,] = verb_patterns[:,1] # phonology for 'are'
+        Verb.state_hist[t,] += verb_patterns[:,1] # phonology for 'are'
 
 
 ##### Plotting #####
@@ -240,6 +275,7 @@ noun_labels = ['dog', 'dogs', 'cat', 'cats']
 plot_trajectories(tvec, noun_sim, noun_labels)
 
 verb_labels = ['is', 'are']
+#verb_labels = ['is', 'are', 'sings', 'sing']
 plot_trajectories(tvec, verb_sim, verb_labels)
 
 plt.plot(tvec, link_dn)
@@ -249,3 +285,8 @@ plt.show()
 plt.plot(tvec, link_nv)
 plt.title('Noun-verb link strength')
 plt.show()
+
+##### Printing final states #####
+Det.print_state()
+Noun.print_state()
+Verb.print_state()
