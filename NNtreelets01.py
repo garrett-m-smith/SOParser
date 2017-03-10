@@ -51,13 +51,14 @@ def scalar_proj(vec, pattern_mat):
 
 def shepard_similarity(vec, pattern_mat):
     """Calculate the similarity s(x, y) = exp(-|x - y|**2) (Shepard, 1987)"""
-    return np.exp(-np.linalg.norm(pattern_mat - vec, axis = 1)**2)
+#    return np.exp(-np.linalg.norm(pattern_mat - vec, axis = 1)**2)
+    return np.exp(-np.linalg.norm(pattern_mat - vec, axis = 1))
 
 def cosine_similarity(vec, pattern_mat):
     """Calculate cosine similarity between a vector and each column in a 
     matrix. Thus, each pattern should be stored as column vectors in the
     matrix."""
-    dot_prod = vec @ pattern_mat
+    dot_prod = vec @ pattern_mat.T
     denom = np.linalg.norm(vec) * np.linalg.norm(pattern_mat, axis = 1)
     return dot_prod / denom
 
@@ -70,6 +71,7 @@ def plot_trajectories(tvec, similarity, labels=None):
         plt.plot(tvec, similarity[:, i])
     plt.xlabel('Time')
     plt.ylabel('Similarity')
+    plt.ylim(0, 1)
     plt.legend()
     plt.title('Similarity')
     plt.show()
@@ -80,8 +82,7 @@ class Treelet(object):
         self.ndependents = ndependents
         self.nlicensors = nlicensors
         self.nmorph = nmorph
-        self.state = np.zeros(nlex + ndependents + nlicensors + nmorph)
-        self.nfeatures = len(self.state)
+        self.nfeatures = nlex + ndependents + nlicensors + nmorph
         self.idx_lex = np.arange(0, nlex)
         self.idx_dependent = np.arange(nlex, nlex + ndependents)
         self.idx_licensor = np.arange(nlex + ndependents, nlex + ndependents + nmorph)
@@ -91,26 +92,6 @@ class Treelet(object):
         self.state_hist = None
         
         self.W_rec = np.zeros((self.nfeatures, self.nfeatures))
-        
-    def set_state(self, vals):
-        assert vals.shape == self.state.shape
-        self.state = vals
-        return self.state
-    
-#    def set_recurrent_weights(self):
-#        """Set recurrent weights with inhibitory connections within banks of
-#        units. Does not yet set weights between feature banks!"""
-#        #assert W.shape == self.W_rec.shape
-#        #self.W_rec = W
-#        #return self.W_rec
-#        W = np.zeros(self.W_rec.shape)
-#        W[np.ix_(self.idx_lex, self.idx_lex)] = -np.ones((self.nlex, self.nlex))
-#        W[np.ix_(self.idx_dependent, self.idx_dependent)] = -np.ones((self.ndependents, self.ndependents))
-#        W[np.ix_(self.idx_licensor, self.idx_licensor)] = -np.ones((self.nlicensors, self.nlicensors))
-#        W[np.ix_(self.idx_morph, self.idx_morph)] = -np.ones((self.nmorph, self.nmorph))
-#        np.fill_diagonal(W, 1)
-#        self.W_rec = W
-#        return self.W_rec
     
     def set_recurrent_weights(self, pattern_mat):
         """Sets the within-treelet recurrent weights. Assumes pattern_mat has 
@@ -146,12 +127,26 @@ class Treelet(object):
 
 ##### Setting up treelets #####
 tstep = 0.01
-tvec = np.arange(0.0, 20.0, tstep)
-Det = Treelet(3, 0, 2, 2)
-Det.state_hist = np.zeros((len(tvec), Det.nfeatures))
+tvec = np.arange(0.0, 30.0, tstep)
+ndet = 3
+nnoun = 2
+nverb = 2
+
 det_patterns = np.array([[1, -1, -1, 0, 0, 1, -1], # a
                          [-1, 1, -1, 0, 0, -1, 1], # these
                          [-1, -1, 1, 0, 0, 1, -1]])#.T # this
+noun_patterns = np.array([[1, -1, 0, 0, 0, 0, 0, 1, -1], # dog
+                          [1, -1, 0, 0, 0, 0, 0, -1, 1], # dogs
+                          [-1, 1, 0, 0, 0, 0, 0, 1, -1], # cat
+                          [-1, 1, 0, 0, 0, 0, 0, -1, 1]])#.T # cats
+verb_patterns = np.array([[1, -1, 0, 0, 1, -1], # is
+                          [1, -1, 0, 0, -1, 1], # are
+                          [-1, 1, 0, 0, 1, -1], # sings
+                          [-1, 1, 0, 0, -1, 1]])#.T # sing
+
+
+Det = Treelet(ndet, 0, nnoun, 2)
+Det.state_hist = np.zeros((len(tvec), Det.nfeatures))
 Det.set_recurrent_weights(det_patterns)
 #Det.W_rec = np.array([[1, -1, -1, 0, 0, 1, -1],
 #                      [-1, 1, -1, 0, 0, -1, 1],
@@ -164,12 +159,9 @@ det_init = np.array([-1, 1, -1, 0, 0, -1, 1]) # activating phonology for 'these'
 Det.set_initial_state(det_init)
 
 # Noun treelet:
-Noun = Treelet(2, 3, 2, 2)
+Noun = Treelet(nnoun, ndet, nverb, 2)
 Noun.state_hist = np.zeros((len(tvec), Noun.nfeatures))
-noun_patterns = np.array([[1, -1, 0, 0, 0, 0, 0, 1, -1], # dog
-                          [1, -1, 0, 0, 0, 0, 0, -1, 1], # dogs
-                          [-1, 1, 0, 0, 0, 0, 0, 1, -1], # cat
-                          [-1, 1, 0, 0, 0, 0, 0, -1, 1]])#.T # cats
+
 Noun.set_recurrent_weights(noun_patterns)
 #Noun.W_rec = np.array([[1, -1, 0, 0, 0, 0, 0, 0, 0],
 #                       [-1, 1, 0, 0, 0, 0, 0, 0, 0],
@@ -183,10 +175,9 @@ Noun.set_recurrent_weights(noun_patterns)
 Noun.set_initial_state(np.random.uniform(-0.01, 0.01, Noun.nfeatures))
 
 # Verb treelet
-Verb = Treelet(2, 2, 0, 2)
+Verb = Treelet(nverb, nnoun, 0, 2)
 Verb.state_hist = np.zeros((len(tvec), Verb.nfeatures))
-verb_patterns = np.array([[1, -1, 0, 0, 1, -1], # is
-                          [-1, 1, 0, 0, -1, 1]])#.T # are
+
 Verb.set_recurrent_weights(verb_patterns)
 #Verb.W_rec = np.array([[1, -1, 0, 0, 1, -1],
 #                       [-1, 1, 0,0, -1, 1],
@@ -223,6 +214,7 @@ for t in range(1, len(tvec)):
 
     # Calculating the similarity:
     det_sim[t,:] = shepard_similarity(Det.state_hist[t,], det_patterns)
+#    det_sim[t,:] = cosine_similarity(Det.state_hist[t,], det_patterns)
 
     # Noun treelet
     input_from_det = np.zeros(Noun.nfeatures)
@@ -250,14 +242,14 @@ for t in range(1, len(tvec)):
     Verb.state_hist[t,] = Verb.state_hist[t-1,] + tstep * (-Verb.state_hist[t-1,]
         + np.tanh(Verb.W_rec @ Verb.state_hist[t-1,] + link_nv[t] * input_to_verb))
     verb_sim[t,] = shepard_similarity(Verb.state_hist[t,], verb_patterns)
-    
-    # Introduce the noun at t = 250
-    if tvec[t] == 5:
-        Noun.state_hist[t,] = noun_patterns[1,] # phonology for 'dogs'
 
-    # Introduce verb at t = 500
+    # Introduce the noun at t = 5
+    if tvec[t] == 5:
+        Noun.state_hist[t,] += noun_patterns[1,]
+
+    # Introduce verb at t = 10
     if tvec[t] == 10:
-        Verb.state_hist[t,] = verb_patterns[1,] # phonology for 'are'
+        Verb.state_hist[t,] += verb_patterns[1,]
 
 
 ##### Plotting #####
@@ -267,13 +259,15 @@ plot_trajectories(tvec, det_sim, det_labels)
 noun_labels = ['dog', 'dogs', 'cat', 'cats']
 plot_trajectories(tvec, noun_sim, noun_labels)
 
-verb_labels = ['is', 'are']
+verb_labels = ['is', 'are', 'sings', 'sing']
 plot_trajectories(tvec, verb_sim, verb_labels)
 
 plt.plot(tvec, link_dn)
+plt.ylim(-1, 1)
 plt.title('Determiner-noun link strength')
 plt.show()
 
 plt.plot(tvec, link_nv)
+plt.ylim(-1, 1)
 plt.title('Noun-verb link strength')
 plt.show()
