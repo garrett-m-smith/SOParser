@@ -8,9 +8,6 @@ Yet to implement:
     1. Feature passing: dependent representation in a treelet should influence
         the number feature in the same treelet's head bank & vice versa
         (incorp. into W_rec).
-    2. Figure out how to handle input from other treelets. Simply adding it in
-        as another term won't cut it if we want the activations bounded in
-        [0, 1].
         
 Multiplying both the growth rate and the term current state by input seems to
 work, but growth rate only doesn't (Afraimovich et al., 2004; Muezzinoglu et 
@@ -19,7 +16,7 @@ al., 2010; Rabinovich et al., 2001)
 Something to keep in mind: Fukai & Tanaka (1997) show that there is a lower
 bound on activations that can make it to winner status; in other words, if a 
 feature starts out below that threshold and can't get abov it, it's doomed to 
-fall to 0. Pay attn. to for introing phon. form.
+fall to 0. Pay attn. to for intro'ing phon. form.
 """
 
 import numpy as np
@@ -75,9 +72,10 @@ class Treelet(object):
         self.state_hist[0,] = vec
     
     def print_state(self, t = -1):
+        longest = np.max([len(x) for x in self.dim_names])
         for n in range(len(self.dim_names)):
-            print('{}:\t{}'.format(self.dim_names[n],
-                  np.round(self.state_hist[t,n], 5)))
+            print('{:{width}}: {}'.format(self.dim_names[n],
+                  np.round(self.state_hist[t,n], 5), width = longest))
         print('\n')
         
     def plot_state_hist(self):
@@ -92,7 +90,7 @@ class Treelet(object):
         
 # Trying a single treelet
 tstep = 0.01
-tvec = np.arange(0.0, 30.0, tstep)
+tvec = np.arange(0.0, 50.0, tstep)
 
 Det = Treelet(3, 2, 0, 0, ['a', 'these', 'that', 'det_sg', 'det_pl'])
 Det.set_recurrent_weights()
@@ -105,32 +103,54 @@ Noun.set_recurrent_weights()
 Noun.state_hist = np.zeros((len(tvec), Noun.nfeatures))
 Noun.random_initial_state(0.1)
 
+Verb = Treelet(2, 2, 2, 2, ['be', 'sing', 'v_sg', 'v_pl', 'dog', 'cat', 'subj_sg', 'subj_pl'])
+Verb.set_recurrent_weights()
+Verb.state_hist = np.zeros((len(tvec), Verb.nfeatures))
+Verb.random_initial_state(0.1)
+
 link_dn = np.zeros(len(tvec))
+link_nv = np.zeros(len(tvec))
 
 for t in range(1, len(tvec)):
     # LV dyn: dx/dt = x * (1 - W_rec @ x)
     link_dn[t] = (Det.state_hist[t-1, Det.idx_head] @  
            Noun.state_hist[t-1, Noun.idx_wholedep]) / 2
-#    link_dn[t] = np.exp(-np.linalg.norm(Det.state_hist[t-1,Det.idx_head] - Noun.state_hist[t-1,Noun.idx_wholedep]))
+    link_nv[t] = (Noun.state_hist[t-1, Noun.idx_head] @
+           Verb.state_hist[t-1, Verb.idx_wholedep]) / 2
     
     input_from_n = np.ones(Det.nfeatures)
     input_from_n[Det.idx_head] = link_dn[t] * Noun.state_hist[t-1, Noun.idx_wholedep]
     Det.state_hist[t,] = Det.state_hist[t-1,] + tstep * (Det.state_hist[t-1,] 
     * (input_from_n - Det.W_rec @ (Det.state_hist[t-1,] * input_from_n)))
     
-    input_from_det = np.ones(Noun.nfeatures)
-    input_from_det[Noun.idx_wholedep] = link_dn[t] * Det.state_hist[t-1,]
+    input_to_n = np.ones(Noun.nfeatures)
+    input_to_n[Noun.idx_wholedep] = link_dn[t] * Det.state_hist[t-1,]
+    input_to_n[Noun.idx_head] = link_nv[t] * Verb.state_hist[t-1, Verb.idx_wholedep]
     Noun.state_hist[t,] = Noun.state_hist[t-1,] + tstep * (Noun.state_hist[t-1,] 
-    * (input_from_det - Noun.W_rec @ (Noun.state_hist[t-1,] * input_from_det)))
+    * (input_to_n - Noun.W_rec @ (Noun.state_hist[t-1,] * input_to_n)))
+    
+    input_to_verb = np.ones(Verb.nfeatures)
+    input_to_verb[Verb.idx_wholedep] = link_nv[t] * Noun.state_hist[t-1,Noun.idx_head]
+    Verb.state_hist[t,] = Verb.state_hist[t-1,] + tstep * (Verb.state_hist[t-1,] 
+    * (input_to_verb - Verb.W_rec @ (Verb.state_hist[t-1,] * input_to_verb)))
     
     if t == 500:
-        Noun.state_hist[t,Noun.idx_head] = np.array([0., 0.5, 0.54, 0])
+        Noun.state_hist[t,Noun.idx_head] = np.array([0.05, 1.0, 1.0, 0.05])
     
 Det.plot_state_hist()
 Noun.plot_state_hist()
+Verb.plot_state_hist()
+
 plt.plot(link_dn)
+plt.title('Det-N link')
+plt.ylim(-0.01, 1.01)
+plt.show()
+
+plt.plot(link_nv)
+plt.title('N-V link')
 plt.ylim(-0.01, 1.01)
 plt.show()
 
 Det.print_state()
 Noun.print_state()
+Verb.print_state()
