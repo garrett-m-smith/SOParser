@@ -51,7 +51,7 @@ class Treelet(object):
         """Set recurrent weights with inhibitory connections within banks of
         units. Does not yet set weights between feature banks!"""
         W = np.zeros(self.W_rec.shape)
-        k = 1.25
+        k = 1.5
         W[np.ix_(self.idx_lex, self.idx_lex)] = k * np.ones((self.nlex, self.nlex))
         W[np.ix_(self.idx_headmorph, self.idx_headmorph)] = k * np.ones((self.nheadmorph, self.nheadmorph))
         if self.ndependents is not 0:
@@ -62,8 +62,10 @@ class Treelet(object):
         
     def random_initial_state(self, noise_mag):
         """Sets a random initial state drawn from a uniform distribution
-        between 0 and noise_mag."""
-        noisy_init = np.random.uniform(0.0, noise_mag, self.nfeatures)
+        between 0 and noise_mag. Initial conditions need to be somewhat higher
+        (here, between 0.1 and 0.1 + noise_mag) in order to make it possible
+        for any of the states to win (Fukai & Tanaka, 1997)."""
+        noisy_init = np.random.uniform(0.1, 0.1 + noise_mag, self.nfeatures)
         self.set_initial_state(noisy_init)
         
     def set_initial_state(self, vec):
@@ -95,7 +97,7 @@ tvec = np.arange(0.0, 50.0, tstep)
 Det = Treelet(3, 2, 0, 0, ['a', 'these', 'that', 'det_sg', 'det_pl'])
 Det.set_recurrent_weights()
 Det.state_hist = np.zeros((len(tvec), Det.nfeatures))
-Det.set_initial_state(np.array([0.05, 0.05, 1, 1, 0.05]))
+Det.set_initial_state(np.array([0.05, 1, 0.05, 0.05, 1]))
 #Det.random_initial_state(0.1)
 
 Noun = Treelet(2, 2, 3, 2, ['dog', 'cat', 'n_sg', 'n_pl', 'a', 'these', 'that', 'det_sg', 'det_pl'])
@@ -117,6 +119,7 @@ for t in range(1, len(tvec)):
            Noun.state_hist[t-1, Noun.idx_wholedep]) / 2
     link_nv[t] = (Noun.state_hist[t-1, Noun.idx_head] @
            Verb.state_hist[t-1, Verb.idx_wholedep]) / 2
+#    link_dn[t], link_nv[t] = (1, 1)
     
     input_from_n = np.ones(Det.nfeatures)
     input_from_n[Det.idx_head] = link_dn[t] * Noun.state_hist[t-1, Noun.idx_wholedep]
@@ -126,16 +129,22 @@ for t in range(1, len(tvec)):
     input_to_n = np.ones(Noun.nfeatures)
     input_to_n[Noun.idx_wholedep] = link_dn[t] * Det.state_hist[t-1,]
     input_to_n[Noun.idx_head] = link_nv[t] * Verb.state_hist[t-1, Verb.idx_wholedep]
+    input_to_n[Noun.idx_headmorph] = (input_to_n[Noun.idx_headmorph]
+    + Noun.state_hist[t-1,Noun.idx_depmorph]) / 2
     Noun.state_hist[t,] = Noun.state_hist[t-1,] + tstep * (Noun.state_hist[t-1,] 
     * (input_to_n - Noun.W_rec @ (Noun.state_hist[t-1,] * input_to_n)))
     
     input_to_verb = np.ones(Verb.nfeatures)
     input_to_verb[Verb.idx_wholedep] = link_nv[t] * Noun.state_hist[t-1,Noun.idx_head]
+    input_to_verb[Verb.idx_headmorph] = (input_to_verb[Verb.idx_headmorph]
+    + Verb.state_hist[t-1,Verb.idx_depmorph]) / 2
     Verb.state_hist[t,] = Verb.state_hist[t-1,] + tstep * (Verb.state_hist[t-1,] 
     * (input_to_verb - Verb.W_rec @ (Verb.state_hist[t-1,] * input_to_verb)))
     
-    if t == 500:
-        Noun.state_hist[t,Noun.idx_head] = np.array([0.05, 1.0, 1.0, 0.05])
+    if t == 500: # cats
+        Noun.state_hist[t,Noun.idx_head] = np.array([0.05, 0.95, 0.05, 0.95])
+    if t == 1500: # sing
+        Verb.state_hist[t,Verb.idx_head] = np.array([0.01, 0.9, 0.01, 0.9])
     
 Det.plot_state_hist()
 Noun.plot_state_hist()
