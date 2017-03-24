@@ -39,6 +39,10 @@ def IE(treelet, ipt, t, tstep):
 def lv(vec, ipt, W, tstep):
     return ipt * vec * (1 - W @ vec)
 
+def weighted_diff(v1, v2, l):
+    wdiff = l * (v1 - v2)
+    return np.clip(wdiff, -1, 1)
+
 
 class Treelet(object):
     def __init__(self, nlex, nheadmorph, ndependents, ndepmorph, dim_names):
@@ -109,7 +113,7 @@ tvec = np.arange(0.0, 50.0, tstep)
 Det = Treelet(3, 2, 0, 0, ['a', 'these', 'that', 'det_sg', 'det_pl'])
 Det.set_recurrent_weights()
 Det.state_hist = np.zeros((len(tvec), Det.nfeatures))
-Det.set_initial_state(np.array([0.05, 0.95, 0.05, 0.05, 0.95]))
+Det.set_initial_state(np.array([0.05, 0.8, 0.05, 0.05, 0.9]))
 #Det.random_initial_state(0.1)
 
 Noun = Treelet(2, 2, 3, 2, ['dog', 'cat', 'n_sg', 'n_pl', 'a', 'these', 'that', 'det_sg', 'det_pl'])
@@ -133,8 +137,11 @@ for t in range(1, len(tvec)):
 #    link_dn[t], link_nv[t] = (1, 1)
     
     input_from_n = np.ones(Det.nfeatures)
+    # adding 1 to input leads to st. fp. at 1, otherwise its unstable...
     input_from_n[Det.idx_head] = (link_dn[t] 
-    * (Noun.state_hist[t-1, Noun.idx_wholedep]))# -  Det.state_hist[t-1, Det.idx_head]))
+    * (Noun.state_hist[t-1, Noun.idx_wholedep] -  Det.state_hist[t-1, Det.idx_head]))
+#    input_from_n[Det.idx_head] = weighted_diff(Noun.state_hist[t-1, Noun.idx_wholedep],
+#                Det.state_hist[t-1, Det.idx_head], link_dn[t])
 #    Det.state_hist[t,] = Det.state_hist[t-1,] + tstep * (Det.state_hist[t-1,] 
 #    * (input_from_n - Det.W_rec @ (Det.state_hist[t-1,] * input_from_n)))
     # Whit's possible way:
