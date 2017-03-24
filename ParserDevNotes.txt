@@ -1,0 +1,43 @@
+Parser dev notes:
+
+-Link strength has to be positive, other wise ungrammatical inputs settle on
+completely wrong parses (e.g., 'many dog are' -> 'many cats are')
+-Recurrent weight matrix can't have correlations between lexical nodes and
+morphological nodes. This might be problematic later on... Since this is the
+case, when phon. form comes, have to spec. morph. This might be a case of
+spurious attractors. Trying noising the weights: didn't work.
+
+Possible problem: It's not adding new lexical items that is making
+parse formation less stable, it's changing the weight matrices to make the 
+different feature banks disconnected. I think this means that I'll need a
+separate lexical representation (lexical unit) for each morphological form:
+'is', 'are', 'sing', 'sings', etc. Is this just for verbs? Let's start with:
+    1. Det: add one new Det (with +link strengths and no lex-morph corr. in
+    W_rec) works. add second new:
+    2. Noun
+    3. Verb
+
+Status as of 18:24 on 10.03.:
+	Still have the issue of weird determiner stable state of [-a, +these, -this, +many]. This seems to be present all the time, but I want to test all combinations of the following:
+		-0 or 1 on W_rec diag
+		-Noising the weights to avoid spurious attractors
+		-Making the links strictly positive (via sig() fn.)
+		-+/- Correlation between lexical nodes and morph nodes
+	Also, check for stupid commenting in/out mistakes, which could also be possible...
+	
+
+Notes on 13.03:
+	With noun_patterns just encoding the lexical features (no number), get oscillations when link dyn are absent and recurrent weights are set using pseudoinverse + w/feature bank inhib.
+	-RESOLVED
+	Seems to be working now....
+	Next steps:
+	-Test adding new verbs
+	-Implement method that simplifies adding new lexical entries to the lexicon
+	-Link dynamics
+	-PP modifier
+	
+Notes, 16.03:
+	Having switched to LV dynamics, the question is how to handle feature passing. My initial thought was to just add the appropriate terms to the recurrent weight matrix. However, that matrix defines the interactions in a winner-takes-all system, so having another term competing just adds to the competition, but doesn't change the winner-takes-all dynamics. Therefore, I need another way of handling feature passing. One way of doing that is to do some kind of weighted average of the head's current number feature with the input from the dependent, putting this into the input_to_X vector.
+	
+Notes on 24.03.:
+	Tried Whit's input idea: dx/dt = x(1 - Wx)net, net = l * (x_sending - x_receiving). This makes the basis vectors unstable if net < 1. Plus, there are oscillations between 0 and 1, so that's out. Next steps: add node for "no dep", dep. bank should have all words, & LV modifications: interconnections with coefs < 0, set param k = 0.
