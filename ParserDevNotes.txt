@@ -41,3 +41,4 @@ Notes, 16.03:
 	
 Notes on 24.03.:
 	Tried Whit's input idea: dx/dt = x(1 - Wx)net, net = l * (x_sending - x_receiving). This makes the basis vectors unstable if net < 1. Plus, there are oscillations between 0 and 1, so that's out. Next steps: add node for "no dep", dep. bank should have all words, & LV modifications: interconnections with coefs < 0, set param k = 0.
+	Got the new feature bank organization going. Now trying to decide on feature passing, etc. I think it's reasonable for the dependent bank _not_ to try to push back on the head bank of the sending treelet. Just share the number bidirectionally. The dependent bank on the head gets input from dependent head bank, but dependent head bank gets no input from head treelet dependent bank.

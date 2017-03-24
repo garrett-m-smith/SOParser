@@ -4,19 +4,14 @@ Created on Tue Mar 14 15:37:15 2017
 
 @author: garrettsmith
 
-Yet to implement:
-    1. Feature passing: dependent representation in a treelet should influence
-        the number feature in the same treelet's head bank & vice versa
-        (incorp. into W_rec).
-        
-Multiplying both the growth rate and the term current state by input seems to
-work, but growth rate only doesn't (Afraimovich et al., 2004; Muezzinoglu et 
-al., 2010; Rabinovich et al., 2001)
+Ok: status as of 17:29, 24.03.: Just added verb lexical items. need to update
+initial values of Det to get it wroking right. Next step is averaging the Agr
+inputs from the Det and the Verb to the Noun treelet. Simple avg. of link-
+strength weighted values to start. After that, add in link competition among 
+all relevant links. That will be the big step.
 
-Something to keep in mind: Fukai & Tanaka (1997) show that there is a lower
-bound on activations that can make it to winner status; in other words, if a 
-feature starts out below that threshold and can't get abov it, it's doomed to 
-fall to 0. Pay attn. to for intro'ing phon. form.
+After that, extend to PP modifiers.
+Keep in mind interweights, which are not yet implemented.
 """
 
 import numpy as np
@@ -62,29 +57,15 @@ class Treelet(object):
                     'dep_pos': np.arange(self.nhead + self.nwords, self.nhead 
                                          + self.nwords + self.npos),
                     'agr': np.arange(2 * self.nhead, 2 * self.nhead 
-                                     + len(number))}
+                                     + len(number)),
+                    'head_agr': np.append(np.arange(0, self.nhead), [-2, -1]),
+                    'dep_agr': np.append(np.arange(self.nhead, 2 
+                                                   * self.nhead), [-2, -1])}
         self.state_hist = None
         self.W_rec = np.zeros((self.nfeat, self.nfeat))
-        self.dim_names = (['nothing'] + lexicon + pos 
-                          + ['dep_' + x for x in ['nothing'] + lexicon] 
+        self.dim_names = (['null'] + lexicon + pos 
+                          + ['dep_' + x for x in ['null'] + lexicon] 
                           + ['dep_' + x for x in pos] + number)
-        
-#        self.nlex = nlex
-#        self.ndependents = ndependents# + ndepmorph
-#        self.nheadmorph = nheadmorph
-#        self.ndepmorph = ndepmorph
-#        self.nfeatures = nlex + nheadmorph + ndependents + ndepmorph
-#        self.idx = np.arange(self.nfeatures, dtype = 'int')
-#        self.idx_lex = self.idx[0:self.nlex]
-#        self.idx_headmorph = self.idx[self.nlex:self.nlex + self.nheadmorph]
-#        self.idx_dependent = self.idx[self.nlex + self.nheadmorph:self.nlex 
-#                                      + self.nheadmorph + self.ndependents]
-#        self.idx_depmorph = np.arange(-2, 0)
-#        self.idx_head = np.append(self.idx_lex, self.idx_headmorph)
-#        self.idx_wholedep = np.append(self.idx_dependent, self.idx_depmorph)
-#        self.state_hist = None
-#        self.dim_names = dim_names
-#        self.W_rec = np.zeros((self.nfeatures, self.nfeatures))
     
     def set_recurrent_weights(self):
         """Set recurrent weights with inhibitory connections within banks of
@@ -131,100 +112,93 @@ class Treelet(object):
         plt.ylabel('State')
         plt.ylim(-0.01, 1.01)
 #        plt.legend(loc = 'center right')
-        plt.legend(bbox_to_anchor = (1, 1))
+        plt.legend(bbox_to_anchor = (1, 1.03))
         plt.title('State over time')
         plt.show()
     
-    def update_state(self, t, tstep):
+    def update_state(self, ipt, t, tstep):
         x = self.state_hist[t-1,]
         W = self.W_rec
-        self.state_hist[t,] = x + tstep * (x * (1 - W @ x))
+        self.state_hist[t,] = x + tstep * (x * (ipt - W @ (ipt * x)))
         
 # Trying a single treelet
 tstep = 0.01
-tvec = np.arange(0.0, 50.0, tstep)
+tvec = np.arange(0.0, 40.0, tstep)
 
-lexicon = ['a', 'these', 'that']
+lexicon = ['a', 'these', 'that', 'dog', 'cat', 'be', 'sing']
 agr = ['sg', 'pl']
-pos = ['Det', 'N']
+pos = ['null', 'Det', 'N']
 
-#Det = Treelet(3, 2, 0, 0, ['a', 'these', 'that', 'det_sg', 'det_pl'])
 Det = Treelet(lexicon, agr, pos)
 Det.set_recurrent_weights()
 Det.state_hist = np.zeros((len(tvec), Det.nfeat))
 det_init = np.zeros(Det.nfeat) + np.random.uniform(0.1, 0.2, Det.nfeat)
-det_init[np.ix_(Det.idx['head_lex'])] = np.array([0.1, 0.9, 0.1, 0.1])
-det_init[np.ix_(Det.idx['head_pos'])] = np.array([0.9, 0.1])
+det_init[np.ix_(Det.idx['head_lex'])] = np.array([0.1, 0.9, 0.1, 0.1, 0.1, 0.1])
+det_init[np.ix_(Det.idx['head_pos'])] = np.array([0.1, 0.9, 0.1])
 det_init[np.ix_(Det.idx['agr'])] = np.array([0.9, 0.1])
+det_init[np.ix_(Det.idx['dep_lex'])] = np.array([0.91, 0.1, 0.1, 0.1, 0.1, 0.1])
 Det.set_initial_state(det_init)
 #Det.random_initial_state(0.1)
 
-#Noun = Treelet(2, 2, 3, 2, ['dog', 'cat', 'n_sg', 'n_pl', 'a', 'these', 'that', 'det_sg', 'det_pl'])
-#Noun.set_recurrent_weights()
-#Noun.state_hist = np.zeros((len(tvec), Noun.nfeatures))
-#Noun.random_initial_state(0.1)
+Noun = Treelet(lexicon, agr, pos)
+Noun.set_recurrent_weights()
+Noun.state_hist = np.zeros((len(tvec), Noun.nfeat))
+Noun.random_initial_state(0.1)
+
+Verb = Treelet(lexicon, agr, pos)
+Verb.set_recurrent_weights()
+Verb.state_hist = np.zeros((len(tvec), Verb.nfeat))
+Verb.random_initial_state(0.1)
 #
-#Verb = Treelet(2, 2, 2, 2, ['be', 'sing', 'v_sg', 'v_pl', 'dog', 'cat', 'subj_sg', 'subj_pl'])
-#Verb.set_recurrent_weights()
-#Verb.state_hist = np.zeros((len(tvec), Verb.nfeatures))
-#Verb.random_initial_state(0.1)
-#
-#link_dn = np.zeros(len(tvec))
-#link_nv = np.zeros(len(tvec))
+link_dn = np.zeros(len(tvec))
+link_nv = np.zeros(len(tvec))
 
 for t in range(1, len(tvec)):
-#    link_dn[t] = (Det.state_hist[t-1, Det.idx_head] @  
-#           Noun.state_hist[t-1, Noun.idx_wholedep]) / 2
-#    link_nv[t] = (Noun.state_hist[t-1, Noun.idx_head] @
-#           Verb.state_hist[t-1, Verb.idx_wholedep]) / 2
-#    link_dn[t], link_nv[t] = (1, 1)
+    link_dn[t] = (Det.state_hist[t-1, Det.idx['head_agr']] @  
+           Noun.state_hist[t-1, Noun.idx['dep_agr']]) / (Det.nhead + Det.nagr)
+    link_nv[t] = (Noun.state_hist[t-1, Noun.idx['head_agr']] @
+           Verb.state_hist[t-1, Verb.idx['dep_agr']]) / (Noun.nhead + Noun.nagr)
+
+    to_det = np.ones(Det.nfeat)
+    to_det[Det.idx['agr']] = (link_dn[t] 
+    * Noun.state_hist[t-1, Noun.idx['agr']])
     
-#    input_from_n = np.ones(Det.nfeatures)
-    # adding 1 to input leads to st. fp. at 1, otherwise its unstable...
-#    input_from_n[Det.idx_head] = (link_dn[t] 
-#    * (Noun.state_hist[t-1, Noun.idx_wholedep] -  Det.state_hist[t-1, Det.idx_head]))
-#    input_from_n[Det.idx_head] = weighted_diff(Noun.state_hist[t-1, Noun.idx_wholedep],
-#                Det.state_hist[t-1, Det.idx_head], link_dn[t])
-#    Det.state_hist[t,] = Det.state_hist[t-1,] + tstep * (Det.state_hist[t-1,] 
-#    * (input_from_n - Det.W_rec @ (Det.state_hist[t-1,] * input_from_n)))
-    # Whit's possible way:
-    Det.update_state(t, tstep)
+    to_n = np.ones(Noun.nfeat)
+    to_n[Noun.idx['dep']] = (link_dn[t] * Det.state_hist[t-1, Det.idx['head']])
+    to_n[Noun.idx['agr']] = (link_dn[t] * Det.state_hist[t-1, Det.idx['agr']])
     
+    to_v = np.ones(Verb.nfeat)
+    to_v[Verb.idx['agr']] = (link_nv[t] 
+    * Noun.state_hist[t-1, Noun.idx['agr']])
+    to_v[Verb.idx['dep']] = (link_nv[t] 
+    * Noun.state_hist[t-1, Noun.idx['head']])
     
-#    input_to_n = np.ones(Noun.nfeatures)
-#    input_to_n[Noun.idx_wholedep] = link_dn[t] * Det.state_hist[t-1,]
-#    input_to_n[Noun.idx_head] = link_nv[t] * Verb.state_hist[t-1, Verb.idx_wholedep]
-#    input_to_n[Noun.idx_headmorph] = (input_to_n[Noun.idx_headmorph]
-#    + Noun.state_hist[t-1,Noun.idx_depmorph]) / 2
-#    Noun.state_hist[t,] = Noun.state_hist[t-1,] + tstep * (Noun.state_hist[t-1,] 
-#    * (input_to_n - Noun.W_rec @ (Noun.state_hist[t-1,] * input_to_n)))
-#    
-#    input_to_verb = np.ones(Verb.nfeatures)
-#    input_to_verb[Verb.idx_wholedep] = link_nv[t] * Noun.state_hist[t-1,Noun.idx_head]
-#    input_to_verb[Verb.idx_headmorph] = (input_to_verb[Verb.idx_headmorph]
-#    + Verb.state_hist[t-1,Verb.idx_depmorph]) / 2
-#    Verb.state_hist[t,] = Verb.state_hist[t-1,] + tstep * (Verb.state_hist[t-1,] 
-#    * (input_to_verb - Verb.W_rec @ (Verb.state_hist[t-1,] * input_to_verb)))
-#    
-#    if tvec[t] == 2: # cats
-#        Noun.state_hist[t,Noun.idx_head] = np.array([0.05, 0.95, 0.05, 0.95])
-#    if tvec[t] == 4: # sing
-#        Verb.state_hist[t,Verb.idx_head] = np.array([0.01, 0.9, 0.01, 0.9])
+    Det.update_state(to_det, t, tstep)
+    Noun.update_state(to_n, t, tstep)
+    Verb.update_state(to_v, t, tstep)
+    
+    if tvec[t] == 2: # cats
+        Noun.state_hist[t, Noun.idx['head']] = np.array(
+                [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0])
+        Noun.state_hist[t, Noun.idx['agr']] = np.array([1, 0])
+    if tvec[t] == 4: # sing
+        Verb.state_hist[t, Verb.idx['head']] = np.array(
+                [0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0])
     
 Det.plot_state_hist()
-#Noun.plot_state_hist()
-#Verb.plot_state_hist()
+Noun.plot_state_hist()
+Verb.plot_state_hist()
 
-#plt.plot(link_dn)
-#plt.title('Det-N link')
-#plt.ylim(-0.01, 1.01)
-#plt.show()
+plt.plot(link_dn)
+plt.title('Det-N link')
+plt.ylim(-0.01, 1.01)
+plt.show()
 
-#plt.plot(link_nv)
-#plt.title('N-V link')
-#plt.ylim(-0.01, 1.01)
-#plt.show()
+plt.plot(link_nv)
+plt.title('N-V link')
+plt.ylim(-0.01, 1.01)
+plt.show()
 
 Det.print_state()
-#Noun.print_state()
-#Verb.print_state()
+Noun.print_state()
+Verb.print_state()
