@@ -4,41 +4,25 @@ Created on Tue Mar 14 15:37:15 2017
 
 @author: garrettsmith
 
-Ok: status as of 17:29, 24.03.: After that, add in link competition among 
-all relevant links. That will be the big step.
+Things to remember:
+    Head treelets don't influence the head bank of their dependents, just the
+agr bank.
+    No interweights right now, just reliant on phonological input.
 
-After that, extend to PP modifiers.
-Keep in mind interweights, which are not yet implemented.
+25.03.: all of the links are there. Need to implement way of saving all link
+strengths and then doing the link competition.
+
+Next, link competition and extend to PP modifiers.
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-def cosine_similarity(v1, v2):
-    """Calculate cosine similarity between two vectors."""
-    dot_prod = v1 @ v2
-    denom = np.linalg.norm(v1) * np.linalg.norm(v2)
-    return dot_prod / denom
-
-def IE(treelet, ipt, t, tstep):
-    xn = treelet.state_hist[t,]
-    fx = lv(xn, ipt, treelet.W_rec, tstep)
-    xhat = xn + tstep * fx
-    fx1 = lv(xhat, ipt, treelet.W_rec, tstep)
-    xn1 = xn + 0.5 * tstep * (fx + fx1)
-    return xn1
-
-def lv(vec, ipt, W, tstep):
-    return ipt * vec * (1 - W @ vec)
-
-def weighted_diff(v1, v2, l):
-    wdiff = l * (v1 - v2)
-    return np.clip(wdiff, -1, 1)
-
 
 class Treelet(object):
 #    def __init__(self, nlex, nheadmorph, ndependents, ndepmorph, dim_names):
-    def __init__(self, lexicon, number, pos):
+    def __init__(self, lexicon, number, pos, name):
+        self.name = name
         # Add extra lex. for "NULL"; x2 b/c dep nodes
         self.nfeat = 2 * (1 + len(lexicon) + len(pos)) + len(number)
         self.nwords = len(lexicon) + 1
@@ -112,8 +96,8 @@ class Treelet(object):
         plt.ylabel('State')
         plt.ylim(-0.01, 1.01)
 #        plt.legend(loc = 'center right')
-#        plt.legend(bbox_to_anchor = (1, 1.03))
-        plt.title('State over time')
+        plt.legend(bbox_to_anchor = (1, 1.03))
+        plt.title('{} state over time'.format(self.name))
         plt.show()
     
     def update_state(self, ipt, t, tstep):
@@ -121,6 +105,7 @@ class Treelet(object):
         W = self.W_rec
         self.state_hist[t,] = x + tstep * (x * (ipt - W @ (ipt * x)))
         
+
 # Trying a single treelet
 tstep = 0.01
 tvec = np.arange(0.0, 100.0, tstep)
@@ -138,7 +123,7 @@ lex_rep = np.array([[0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0], # a
                     [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1], # sing
                     [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]]) # null
 
-Det = Treelet(lexicon, agr, pos)
+Det = Treelet(lexicon, agr, pos, 'Det')
 Det.set_recurrent_weights()
 Det.state_hist = np.zeros((len(tvec), Det.nfeat))
 det_init = np.zeros(Det.nfeat) + np.random.uniform(0.1, 0.2, Det.nfeat)
@@ -148,65 +133,63 @@ det_init[np.ix_(Det.idx['dep'])] = lex_rep[-1]
 Det.set_initial_state(det_init)
 #Det.random_initial_state(0.1)
 
-Noun = Treelet(lexicon, agr, pos)
+Noun = Treelet(lexicon, agr, pos, 'Noun')
 Noun.set_recurrent_weights()
 Noun.state_hist = np.zeros((len(tvec), Noun.nfeat))
 Noun.random_initial_state(0.1)
+# Nouns expect a determiner as a dependent
+Noun.state_hist[0, np.ix_(Noun.idx['dep_pos'])] = np.array([0.1, 0.5, 0.1, 0.1])
 
-Verb = Treelet(lexicon, agr, pos)
+Verb = Treelet(lexicon, agr, pos, 'Verb')
 Verb.set_recurrent_weights()
 Verb.state_hist = np.zeros((len(tvec), Verb.nfeat))
 Verb.random_initial_state(0.1)
-#
-link_dn = np.zeros(len(tvec))
-link_nv = np.zeros(len(tvec))
+# Verbs expect a Noun as a dependent
+Verb.state_hist[0, np.ix_(Verb.idx['dep_pos'])] = np.array([0.1, 0.1, 0.5, 0.1])
+
+#link_dn = np.zeros(len(tvec))
+#link_nv = np.zeros(len(tvec))
+
+all_words = [Det, Noun, Verb]
 
 for t in range(1, len(tvec)):
-    link_dn[t] = (Det.state_hist[t-1, Det.idx['head_agr']] @  
-           Noun.state_hist[t-1, Noun.idx['dep_agr']]) / (Det.nhead + Det.nagr)
-    link_nv[t] = (Noun.state_hist[t-1, Noun.idx['head_agr']] @
-           Verb.state_hist[t-1, Verb.idx['dep_agr']]) / (Noun.nhead + Noun.nagr)
-
-    to_det = np.ones(Det.nfeat)
-    to_det[Det.idx['agr']] = (link_dn[t] 
-    * Noun.state_hist[t-1, Noun.idx['agr']])
+    for word in all_words:
+        others = [x for x in all_words if x is not word]
+        to_word = np.ones(word.nfeat)
+        to_word[word.idx['dep_agr']] = 0
+        for other in others:
+            to_word[word.idx['dep']] += ((word.state_hist[t-1,word.idx['dep']]
+            @ other.state_hist[t-1, other.idx['head']] 
+            / (word.nhead + word.nagr))
+            * other.state_hist[t-1, other.idx['head']])
+        to_word = to_word / len(others)
+        word.update_state(to_word, t, tstep)
     
-    to_n = np.ones(Noun.nfeat)
-    to_n[Noun.idx['dep']] = (link_dn[t] * Det.state_hist[t-1, Det.idx['head']])
-    to_n[Noun.idx['agr']] = 0.5 * ((link_dn[t] 
-    * Det.state_hist[t-1, Det.idx['agr']])
-    + (link_nv[t] * Verb.state_hist[t-1, Verb.idx['agr']]))
-    
-    to_v = np.ones(Verb.nfeat)
-    to_v[Verb.idx['agr']] = (link_nv[t] 
-    * Noun.state_hist[t-1, Noun.idx['agr']])
-    to_v[Verb.idx['dep']] = (link_nv[t] 
-    * Noun.state_hist[t-1, Noun.idx['head']])
-    
-    Det.update_state(to_det, t, tstep)
-    Noun.update_state(to_n, t, tstep)
-    Verb.update_state(to_v, t, tstep)
+#    link_dn[t] = (Det.state_hist[t-1, Det.idx['head_agr']] @  
+#           Noun.state_hist[t-1, Noun.idx['dep_agr']]) / (Det.nhead + Det.nagr)
+#    link_nv[t] = (Noun.state_hist[t-1, Noun.idx['head_agr']] @
+#           Verb.state_hist[t-1, Verb.idx['dep_agr']]) / (Noun.nhead + Noun.nagr)
     
     if tvec[t] == 10: # cat
         Noun.state_hist[t, Noun.idx['head']] = lex_rep[4]
         Noun.state_hist[t, Noun.idx['agr']] = np.array([0, 1])
     if tvec[t] == 20: # sings
         Verb.state_hist[t, Verb.idx['head']] = lex_rep[-2]
-        Verb.state_hist[t, Verb.idx['agr']] = np.array([1, 0])
+        Verb.state_hist[t, Verb.idx['agr']] = np.array([0, 1])
     
 Det.plot_state_hist()
 Noun.plot_state_hist()
 Verb.plot_state_hist()
 
-plt.plot(link_dn)
-plt.title('Det-N link')
-#plt.ylim(-0.01, 1.01)
-plt.show()
-
-plt.plot(link_nv)
-plt.title('N-V link')
-#plt.ylim(-0.01, 1.01)
-plt.show()
+#plt.plot(link_dn)
+#plt.title('Det-N link')
+#plt.ylim(-0.01, 0.3)
+#plt.show()
+#
+#plt.plot(link_nv)
+#plt.title('N-V link')
+#plt.ylim(-0.01, 0.3)
+#plt.show()
 
 Det.print_state()
 Noun.print_state()
