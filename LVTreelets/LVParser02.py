@@ -5,14 +5,11 @@ Created on Tue Mar 14 15:37:15 2017
 @author: garrettsmith
 
 Things to remember:
-    Head treelets don't influence the head bank of their dependents, just the
-agr bank.
-    No interweights right now, just reliant on phonological input.
-    
+    Head treelets DO influence the head bank of their dependents.
+    No interweights right now, just reliant on phonological input. This might
+not be the best thing if we want correct priming...
 
-25.03.: all of the links are there. Need to implement way of doing the link competition.
-
-Next, link competition and extend to PP modifiers.
+Next, extend to PP modifiers.
 """
 
 import numpy as np
@@ -107,28 +104,38 @@ class Treelet(object):
         
 
 def plot_links(links, all_treelets):
-    for treelet in all_treelets:
-        others = [x for x in all_treelets if x is not treelet]
-        for other in others:
-            linked_treelets = treelet.name + '-' + other.name
-            plt.plot(links[treelet.name][other.name], label = linked_treelets)
+    """Gotta fix!"""
+    for treelet in range(len(all_treelets)):
+        curr_word = all_treelets[treelet]
+        others = [x for x in all_treelets if x is not curr_word]
+        for other in range(len(others)):
+            curr_other = others[other]
+            linked_treelets = (curr_word.name + '-' 
+                               + curr_other.name)
+            plt.plot(links[treelet, other, :], label = linked_treelets)
         plt.xlabel('Time')
         plt.ylabel('Link strength')
         plt.legend(loc = 'center right')
-        plt.title("Links to {}'s dependent attachment site".format(treelet.name))
+        plt.title("Links to {}'s dependent attachment site".format(all_treelets[treelet].name))
+        plt.ylim(-0.01, 1.01)
         plt.show()
 
-def link_dyn(links, curr_overlap, Wlinks, t, tstep):
-    x = 
+def update_links(links, overlap, Wlinks, t, tstep):
+    x = links[:, :, t-1].flatten()
+    ipt = overlap.flatten()
+    xt1 = x + tstep * (x * (ipt - Wlinks @ (ipt * x)))
+    links[:, :, t] = xt1.reshape(links.shape[0], links.shape[1])
 
-# Trying a single treelet
+
+# Here we go:
 tstep = 0.01
-tvec = np.arange(0.0, 100.0, tstep)
+tvec = np.arange(0.0, 150.0, tstep)
 
 lexicon = ['a', 'these', 'that', 'dog', 'cat', 'be', 'sing']
 agr = ['sg', 'pl']
 pos = ['null', 'Det', 'N', 'V']
 
+# Lexical representations: first lexical units, then POS units
 lex_rep = np.array([[0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0], # a
                     [0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0], # these
                     [0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0], #that
@@ -153,49 +160,79 @@ Noun.set_recurrent_weights()
 Noun.state_hist = np.zeros((len(tvec), Noun.nfeat))
 Noun.random_initial_state(0.1)
 # Nouns expect a determiner as a dependent
-Noun.state_hist[0, np.ix_(Noun.idx['dep_pos'])] = np.array([0.1, 0.5, 0.1, 0.1])
+Noun.state_hist[0, np.ix_(Noun.idx['dep_pos'])] = np.array([0, 1., 0, 0])
 
 Verb = Treelet(lexicon, agr, pos, 'Verb')
 Verb.set_recurrent_weights()
 Verb.state_hist = np.zeros((len(tvec), Verb.nfeat))
 Verb.random_initial_state(0.1)
 # Verbs expect a Noun as a dependent
-Verb.state_hist[0, np.ix_(Verb.idx['dep_pos'])] = np.array([0.1, 0.1, 0.5, 0.1])
+Verb.state_hist[0, np.ix_(Verb.idx['dep_pos'])] = np.array([0, 0, 1., 0])
 
 
 all_words = [Det, Noun, Verb]
-links = {Det.name: {Noun.name: np.zeros(len(tvec)), 
-                    Verb.name: np.zeros(len(tvec))},
-         Noun.name: {Det.name: np.zeros(len(tvec)),
-                     Verb.name: np.zeros(len(tvec))},
-        Verb.name: {Det.name: np.zeros(len(tvec)),
-                    Noun.name: np.zeros(len(tvec))}}
+overlap = np.zeros((len(all_words), len(all_words) - 1))
+links = np.zeros((len(all_words), len(all_words) - 1, len(tvec)))
+#links[:,:,0] = np.random.uniform(0.1, 0.2, links[:,:,0].shape)
+
+# Links from same head should compete, links to same dependent should compete,
+# and one only treelet should dominate.
+k = 2
+W_links = np.array([[1, k, k, 0, 0, k],
+                    [k, 1, 0, k, k, 0],
+                    [k, 0, 1, k, k, 0],
+                    [0, k, k, 1, 0, k],
+                    [0, k, k, 0, 1, k],
+                    [k, 0, 0, k, k, 1]])
+
+# Setting initial link conditions to the first overlap * 0.5
+for word in range(len(all_words)):
+    curr_word = all_words[word]
+    others = [x for x in all_words if x is not curr_word]
+    for other in range(len(others)):
+        curr_other = others[other]
+        links[word, other, 0] = (curr_word.state_hist[0, curr_word.idx['dep_agr']]
+        @ curr_other.state_hist[0, curr_other.idx['head_agr']]
+        / (curr_word.nhead + curr_word.nagr)) * 0.5
 
 for t in range(1, len(tvec)):
-    for word in all_words:
-        others = [x for x in all_words if x is not word]
-        to_word = np.ones(word.nfeat)
-        to_word[word.idx['dep_agr']] = 0
-        for other in others:
+    for word in range(len(all_words)):
+        curr_word = all_words[word]
+        others = [x for x in all_words if x is not curr_word]
+        to_word = np.ones(curr_word.nfeat)
+        to_word[curr_word.idx['dep_agr']] = 0
+        for other in range(len(others)):
+            curr_other = others[other]
             # Calculate overlap
-            links[word.name][other.name][t] = (word.state_hist[t-1,word.idx['dep_agr']]
-            @ other.state_hist[t-1, other.idx['head_agr']] 
-            / (word.nhead + word.nagr))
+            overlap[word, other] = (curr_word.state_hist[t-1,
+                   curr_word.idx['dep_agr']]
+            @ curr_other.state_hist[t-1, curr_other.idx['head_agr']] 
+            / (curr_word.nhead + curr_word.nagr))
+        
+        # Doing link competition
+        update_links(links, overlap, W_links, t, tstep)
+        
+        # Getting link-weighted input from other treelets
+        for other in range(len(others)):
+            curr_other = others[other]
             # Add in link-strength-weighted contrib from sending treelet
-            to_word[word.idx['dep']] += (links[word.name][other.name][t]
-            * other.state_hist[t-1, other.idx['head']])
+            to_word[curr_word.idx['dep_agr']] += (links[word, other, t]
+            * curr_other.state_hist[t-1, curr_other.idx['head_agr']])
+            to_word[curr_word.idx['head_agr']] += (links[word, other, t]
+            * curr_other.state_hist[t-1, curr_other.idx['dep_agr']])
+        
         # Avg.ing/normalizing
-        to_word = to_word / len(others)
+        to_word = to_word / (len(all_words) - 1)
         # LV treelet dynamics
-        word.update_state(to_word, t, tstep)
+        all_words[word].update_state(to_word, t, tstep)
     
     # Inputing phonology
-    if tvec[t] == 10: # cat
-        Noun.state_hist[t, Noun.idx['head']] = lex_rep[4]
-        Noun.state_hist[t, Noun.idx['agr']] = np.array([0, 1])
-    if tvec[t] == 20: # sings
-        Verb.state_hist[t, Verb.idx['head']] = lex_rep[-2]
-        Verb.state_hist[t, Verb.idx['agr']] = np.array([0, 1])
+    if tvec[t] == 30:
+        Noun.state_hist[t, Noun.idx['head']] = lex_rep[3] # dog
+        Noun.state_hist[t, Noun.idx['agr']] = np.array([0, 1]) # pl
+    if tvec[t] == 60:
+        Verb.state_hist[t, Verb.idx['head']] = lex_rep[-2] # sing
+        Verb.state_hist[t, Verb.idx['agr']] = np.array([0, 1]) # pl
     
 # Checking the results:
 Det.plot_state_hist()

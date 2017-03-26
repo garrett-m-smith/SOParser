@@ -49,5 +49,5 @@ Notes on 24.03.:
 
 26.03:
 	Link strengths are now saved at each time step, and I've added a function for plotting them. Next step is implementing the LV competition in the link dynamics. 
-
+	Ok, links compete and feature passing works. I just need a way of making the links to dep_null go to 0...
 
