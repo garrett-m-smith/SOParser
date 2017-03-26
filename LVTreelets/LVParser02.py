@@ -8,9 +8,9 @@ Things to remember:
     Head treelets don't influence the head bank of their dependents, just the
 agr bank.
     No interweights right now, just reliant on phonological input.
+    
 
-25.03.: all of the links are there. Need to implement way of saving all link
-strengths and then doing the link competition.
+25.03.: all of the links are there. Need to implement way of doing the link competition.
 
 Next, link competition and extend to PP modifiers.
 """
@@ -106,6 +106,21 @@ class Treelet(object):
         self.state_hist[t,] = x + tstep * (x * (ipt - W @ (ipt * x)))
         
 
+def plot_links(links, all_treelets):
+    for treelet in all_treelets:
+        others = [x for x in all_treelets if x is not treelet]
+        for other in others:
+            linked_treelets = treelet.name + '-' + other.name
+            plt.plot(links[treelet.name][other.name], label = linked_treelets)
+        plt.xlabel('Time')
+        plt.ylabel('Link strength')
+        plt.legend(loc = 'center right')
+        plt.title("Links to {}'s dependent attachment site".format(treelet.name))
+        plt.show()
+
+def link_dyn(links, curr_overlap, Wlinks, t, tstep):
+    x = 
+
 # Trying a single treelet
 tstep = 0.01
 tvec = np.arange(0.0, 100.0, tstep)
@@ -128,7 +143,7 @@ Det.set_recurrent_weights()
 Det.state_hist = np.zeros((len(tvec), Det.nfeat))
 det_init = np.zeros(Det.nfeat) + np.random.uniform(0.1, 0.2, Det.nfeat)
 det_init[Det.idx['head']] = lex_rep[1]
-det_init[np.ix_(Det.idx['agr'])] = np.array([0.05, 0.9])
+det_init[np.ix_(Det.idx['agr'])] = np.array([0.0, 1.])
 det_init[np.ix_(Det.idx['dep'])] = lex_rep[-1]
 Det.set_initial_state(det_init)
 #Det.random_initial_state(0.1)
@@ -147,10 +162,14 @@ Verb.random_initial_state(0.1)
 # Verbs expect a Noun as a dependent
 Verb.state_hist[0, np.ix_(Verb.idx['dep_pos'])] = np.array([0.1, 0.1, 0.5, 0.1])
 
-#link_dn = np.zeros(len(tvec))
-#link_nv = np.zeros(len(tvec))
 
 all_words = [Det, Noun, Verb]
+links = {Det.name: {Noun.name: np.zeros(len(tvec)), 
+                    Verb.name: np.zeros(len(tvec))},
+         Noun.name: {Det.name: np.zeros(len(tvec)),
+                     Verb.name: np.zeros(len(tvec))},
+        Verb.name: {Det.name: np.zeros(len(tvec)),
+                    Noun.name: np.zeros(len(tvec))}}
 
 for t in range(1, len(tvec)):
     for word in all_words:
@@ -158,18 +177,19 @@ for t in range(1, len(tvec)):
         to_word = np.ones(word.nfeat)
         to_word[word.idx['dep_agr']] = 0
         for other in others:
-            to_word[word.idx['dep']] += ((word.state_hist[t-1,word.idx['dep']]
-            @ other.state_hist[t-1, other.idx['head']] 
+            # Calculate overlap
+            links[word.name][other.name][t] = (word.state_hist[t-1,word.idx['dep_agr']]
+            @ other.state_hist[t-1, other.idx['head_agr']] 
             / (word.nhead + word.nagr))
+            # Add in link-strength-weighted contrib from sending treelet
+            to_word[word.idx['dep']] += (links[word.name][other.name][t]
             * other.state_hist[t-1, other.idx['head']])
+        # Avg.ing/normalizing
         to_word = to_word / len(others)
+        # LV treelet dynamics
         word.update_state(to_word, t, tstep)
     
-#    link_dn[t] = (Det.state_hist[t-1, Det.idx['head_agr']] @  
-#           Noun.state_hist[t-1, Noun.idx['dep_agr']]) / (Det.nhead + Det.nagr)
-#    link_nv[t] = (Noun.state_hist[t-1, Noun.idx['head_agr']] @
-#           Verb.state_hist[t-1, Verb.idx['dep_agr']]) / (Noun.nhead + Noun.nagr)
-    
+    # Inputing phonology
     if tvec[t] == 10: # cat
         Noun.state_hist[t, Noun.idx['head']] = lex_rep[4]
         Noun.state_hist[t, Noun.idx['agr']] = np.array([0, 1])
@@ -177,19 +197,12 @@ for t in range(1, len(tvec)):
         Verb.state_hist[t, Verb.idx['head']] = lex_rep[-2]
         Verb.state_hist[t, Verb.idx['agr']] = np.array([0, 1])
     
+# Checking the results:
 Det.plot_state_hist()
 Noun.plot_state_hist()
 Verb.plot_state_hist()
 
-#plt.plot(link_dn)
-#plt.title('Det-N link')
-#plt.ylim(-0.01, 0.3)
-#plt.show()
-#
-#plt.plot(link_nv)
-#plt.title('N-V link')
-#plt.ylim(-0.01, 0.3)
-#plt.show()
+plot_links(links, all_words)
 
 Det.print_state()
 Noun.print_state()

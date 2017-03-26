@@ -47,4 +47,7 @@ Notes on 24.03.:
 	Added in averaging of inputs from Det and V to Agr bank of noun. Seems to behave reasonably.
 	Added in lexicon of all words (just a list) and a set of for-loops to handle the updating. All of the links are now entertained, but they don't compete yet. That's the next step!
 
+26.03:
+	Link strengths are now saved at each time step, and I've added a function for plotting them. Next step is implementing the LV competition in the link dynamics. 
+
 
