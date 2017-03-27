@@ -5,13 +5,22 @@ Created on Tue Mar 14 15:37:15 2017
 @author: garrettsmith
 
 Things to remember:
-    Head treelets DO influence the head bank of their dependents.
     No interweights right now, just reliant on phonological input. This might
 not be the best thing if we want correct priming...
-    Link competition current has the form x * (input - Wx). This makes the
-links to the Det stay near zero, but it might be a questionable choice.
+    Link competition current has the form x * (input - W(ipt * x)).
+    Link weight matrix is currently set by hand. Will want to change when
+adding more treelets.
+    Null mask is implemented, doesn't have the intended effects...
+    
 
-Next, extend to PP modifiers.
+Next:
+    Done: Start states between 0 and 1
+    Half done, has weird effects...: Intro'ing phonological forms should leave
+    unaffected features/units unchanged in their activation
+    3. Interconnections
+    4. Extend to PP modifiers.
+    5. Noise
+    6. Monte-Carlo mechanism
 """
 
 import numpy as np
@@ -19,7 +28,6 @@ import matplotlib.pyplot as plt
 
 
 class Treelet(object):
-#    def __init__(self, nlex, nheadmorph, ndependents, ndepmorph, dim_names):
     def __init__(self, lexicon, number, pos, name):
         self.name = name
         # Add extra lex. for "NULL"; x2 b/c dep nodes
@@ -78,12 +86,24 @@ class Treelet(object):
         assert self.state_hist is not None, 'state_hist not initialized'
         self.state_hist[0,] = vec
     
+    def shrink_initial_state(self):
+        vec = self.state_hist[0,] + np.random.uniform(0.05, 0.15, self.nfeat)
+        vec[vec >= 1] = 0.9
+        self.state_hist[0,] = vec
+    
     def print_state(self, t = -1):
         longest = np.max([len(x) for x in self.dim_names])
         for n in range(len(self.dim_names)):
             print('{:{width}}: {}'.format(self.dim_names[n],
                   np.round(self.state_hist[t,n], 5), width = longest))
         print('\n')
+    
+    def intro_phon(self, vec, idx, t):
+        """Expects a bit vector with the phonological form activated, i.e.,
+        set to 1. Sets state_hist at time point t to 0.9 times those values."""
+        vec2 = np.clip(self.state_hist[t, self.idx[idx]], 0, 0.8)
+        vec2[vec == 1] = 0.9
+        self.state_hist[t, self.idx[idx]] = vec2
         
     def plot_state_hist(self):
         for dim in range(len(self.dim_names)):
@@ -125,8 +145,8 @@ def plot_links(links, all_treelets):
 def update_links(links, overlap, Wlinks, t, tstep):
     x = links[:, :, t-1].flatten()
     ipt = overlap.flatten()
-#    xt1 = x + tstep * (x * (ipt - Wlinks @ (ipt * x)))
-    xt1 = x + tstep * (x * (ipt - Wlinks @ x))
+    xt1 = x + tstep * (x * (ipt - Wlinks @ (ipt * x)))
+#    xt1 = x + tstep * (x * (ipt - Wlinks @ x))
     links[:, :, t] = xt1.reshape(links.shape[0], links.shape[1])
 
 
@@ -139,7 +159,7 @@ agr = ['sg', 'pl']
 pos = ['null', 'Det', 'N', 'V']
 
 # Lexical representations: first lexical units, then POS units
-lex_rep = np.array([[0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0], # a
+lex_rep = np.array([[0., 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0], # a
                     [0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0], # these
                     [0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0], #that
                     [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0], # dog
@@ -153,9 +173,10 @@ Det.set_recurrent_weights()
 Det.state_hist = np.zeros((len(tvec), Det.nfeat))
 det_init = np.zeros(Det.nfeat) + np.random.uniform(0.1, 0.2, Det.nfeat)
 det_init[Det.idx['head']] = lex_rep[1]
-det_init[np.ix_(Det.idx['agr'])] = np.array([0.0, 1.])
+det_init[np.ix_(Det.idx['agr'])] = np.array([0, 1.])
 det_init[np.ix_(Det.idx['dep'])] = lex_rep[-1]
 Det.set_initial_state(det_init)
+Det.shrink_initial_state()
 #Det.random_initial_state(0.1)
 
 Noun = Treelet(lexicon, agr, pos, 'Noun')
@@ -164,6 +185,7 @@ Noun.state_hist = np.zeros((len(tvec), Noun.nfeat))
 Noun.random_initial_state(0.1)
 # Nouns expect a determiner as a dependent
 Noun.state_hist[0, np.ix_(Noun.idx['dep_pos'])] = np.array([0, 1., 0, 0])
+Noun.shrink_initial_state()
 
 Verb = Treelet(lexicon, agr, pos, 'Verb')
 Verb.set_recurrent_weights()
@@ -171,6 +193,7 @@ Verb.state_hist = np.zeros((len(tvec), Verb.nfeat))
 Verb.random_initial_state(0.1)
 # Verbs expect a Noun as a dependent
 Verb.state_hist[0, np.ix_(Verb.idx['dep_pos'])] = np.array([0, 0, 1., 0])
+Verb.shrink_initial_state()
 
 
 all_words = [Det, Noun, Verb]
@@ -188,15 +211,20 @@ W_links = np.array([[1, k, k, 0, 0, k],
                     [0, k, k, 0, 1, k],
                     [k, 0, 0, k, k, 1]])
 
+null_filter = np.ones(Det.nhead + Det.nagr)
+null_filter[0] = 0
+null_filter[Det.idx['head_pos'][0]] = 0
+
 # Setting initial link conditions to the first overlap * 0.5
 for word in range(len(all_words)):
     curr_word = all_words[word]
     others = [x for x in all_words if x is not curr_word]
     for other in range(len(others)):
         curr_other = others[other]
-        links[word, other, 0] = (curr_word.state_hist[0, curr_word.idx['dep_agr']]
-        @ curr_other.state_hist[0, curr_other.idx['head_agr']]
-        / (curr_word.nhead + curr_word.nagr)) * 0.5
+        links[word, other, 0] = ((null_filter 
+            * curr_word.state_hist[0, curr_word.idx['dep_agr']])
+            @ (null_filter * curr_other.state_hist[0, curr_other.idx['head_agr']])
+            / (curr_word.nhead + curr_word.nagr)) * 0.5
 
 for t in range(1, len(tvec)):
     for word in range(len(all_words)):
@@ -207,9 +235,9 @@ for t in range(1, len(tvec)):
         for other in range(len(others)):
             curr_other = others[other]
             # Calculate overlap
-            overlap[word, other] = (curr_word.state_hist[t-1,
-                   curr_word.idx['dep_agr']]
-            @ curr_other.state_hist[t-1, curr_other.idx['head_agr']] 
+            overlap[word, other] = ((null_filter * curr_word.state_hist[t-1,
+                   curr_word.idx['dep_agr']])
+            @ (null_filter * curr_other.state_hist[t-1, curr_other.idx['head_agr']]) 
             / (curr_word.nhead + curr_word.nagr))
         
         # Doing link competition
@@ -220,9 +248,9 @@ for t in range(1, len(tvec)):
             curr_other = others[other]
             # Add in link-strength-weighted contrib from sending treelet
             to_word[curr_word.idx['dep_agr']] += (links[word, other, t]
-            * curr_other.state_hist[t-1, curr_other.idx['head_agr']])
+            * (null_filter * curr_other.state_hist[t-1, curr_other.idx['head_agr']]))
             to_word[curr_word.idx['head_agr']] += (links[word, other, t]
-            * curr_other.state_hist[t-1, curr_other.idx['dep_agr']])
+            * (null_filter * curr_other.state_hist[t-1, curr_other.idx['dep_agr']]))
         
         # Avg.ing/normalizing
         to_word = to_word / (len(all_words) - 1)
@@ -231,11 +259,11 @@ for t in range(1, len(tvec)):
     
     # Inputing phonology
     if tvec[t] == 30:
-        Noun.state_hist[t, Noun.idx['head']] = lex_rep[3] # dog
-        Noun.state_hist[t, Noun.idx['agr']] = np.array([1, 0]) # sg
+        Noun.intro_phon(lex_rep[3,], 'head', t)
+        Noun.intro_phon(np.array([0, 1.]), 'agr', t)
     if tvec[t] == 60:
-        Verb.state_hist[t, Verb.idx['head']] = lex_rep[-2] # sing
-        Verb.state_hist[t, Verb.idx['agr']] = np.array([1, 0]) # sg
+        Verb.intro_phon(lex_rep[-2], 'head', t)
+        Verb.intro_phon(np.array([0., 1.]), 'agr', t)
     
 # Checking the results:
 Det.plot_state_hist()
