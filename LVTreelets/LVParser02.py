@@ -8,6 +8,8 @@ Things to remember:
     Head treelets DO influence the head bank of their dependents.
     No interweights right now, just reliant on phonological input. This might
 not be the best thing if we want correct priming...
+    Link competition current has the form x * (input - Wx). This makes the
+links to the Det stay near zero, but it might be a questionable choice.
 
 Next, extend to PP modifiers.
 """
@@ -123,7 +125,8 @@ def plot_links(links, all_treelets):
 def update_links(links, overlap, Wlinks, t, tstep):
     x = links[:, :, t-1].flatten()
     ipt = overlap.flatten()
-    xt1 = x + tstep * (x * (ipt - Wlinks @ (ipt * x)))
+#    xt1 = x + tstep * (x * (ipt - Wlinks @ (ipt * x)))
+    xt1 = x + tstep * (x * (ipt - Wlinks @ x))
     links[:, :, t] = xt1.reshape(links.shape[0], links.shape[1])
 
 
@@ -229,10 +232,10 @@ for t in range(1, len(tvec)):
     # Inputing phonology
     if tvec[t] == 30:
         Noun.state_hist[t, Noun.idx['head']] = lex_rep[3] # dog
-        Noun.state_hist[t, Noun.idx['agr']] = np.array([0, 1]) # pl
+        Noun.state_hist[t, Noun.idx['agr']] = np.array([1, 0]) # sg
     if tvec[t] == 60:
         Verb.state_hist[t, Verb.idx['head']] = lex_rep[-2] # sing
-        Verb.state_hist[t, Verb.idx['agr']] = np.array([0, 1]) # pl
+        Verb.state_hist[t, Verb.idx['agr']] = np.array([1, 0]) # sg
     
 # Checking the results:
 Det.plot_state_hist()
