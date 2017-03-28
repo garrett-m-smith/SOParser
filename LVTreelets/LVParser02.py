@@ -102,7 +102,8 @@ class Treelet(object):
         """Expects a bit vector with the phonological form activated, i.e.,
         set to 1. Sets state_hist at time point t to 0.9 times those values."""
         vec2 = np.clip(self.state_hist[t, self.idx[idx]], 0, 0.8)
-        vec2[vec == 1] = 0.9
+#        vec2[vec == 1] = 0.9
+        vec2[vec == 1] = 1.
         self.state_hist[t, self.idx[idx]] = vec2
         
     def plot_state_hist(self):
@@ -176,7 +177,7 @@ det_init[Det.idx['head']] = lex_rep[1]
 det_init[np.ix_(Det.idx['agr'])] = np.array([0, 1.])
 det_init[np.ix_(Det.idx['dep'])] = lex_rep[-1]
 Det.set_initial_state(det_init)
-Det.shrink_initial_state()
+#Det.shrink_initial_state()
 #Det.random_initial_state(0.1)
 
 Noun = Treelet(lexicon, agr, pos, 'Noun')
@@ -185,7 +186,7 @@ Noun.state_hist = np.zeros((len(tvec), Noun.nfeat))
 Noun.random_initial_state(0.1)
 # Nouns expect a determiner as a dependent
 Noun.state_hist[0, np.ix_(Noun.idx['dep_pos'])] = np.array([0, 1., 0, 0])
-Noun.shrink_initial_state()
+#Noun.shrink_initial_state()
 
 Verb = Treelet(lexicon, agr, pos, 'Verb')
 Verb.set_recurrent_weights()
@@ -193,7 +194,7 @@ Verb.state_hist = np.zeros((len(tvec), Verb.nfeat))
 Verb.random_initial_state(0.1)
 # Verbs expect a Noun as a dependent
 Verb.state_hist[0, np.ix_(Verb.idx['dep_pos'])] = np.array([0, 0, 1., 0])
-Verb.shrink_initial_state()
+#Verb.shrink_initial_state()
 
 
 all_words = [Det, Noun, Verb]
@@ -212,8 +213,8 @@ W_links = np.array([[1, k, k, 0, 0, k],
                     [k, 0, 0, k, k, 1]])
 
 null_filter = np.ones(Det.nhead + Det.nagr)
-null_filter[0] = 0
-null_filter[Det.idx['head_pos'][0]] = 0
+#null_filter[0] = 0
+#null_filter[Det.idx['head_pos'][0]] = 0
 
 # Setting initial link conditions to the first overlap * 0.5
 for word in range(len(all_words)):
