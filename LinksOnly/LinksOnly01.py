@@ -154,10 +154,11 @@ x0[0] = x0[0] + (1 - x0[0]) / adj
 xhist = np.zeros((len(tvec), nlinks))
 xhist[0,] = x0
 #noisemag = 1. # good!
-noisemag = 2.
+#noisemag = 2. # better balance, but with more Others
+noisemag = 1.5
 noise = np.random.normal(0, noisemag, xhist.shape)
 
-nreps = 100
+nreps = 1000
 all_sents = [box_of_N2, group_of_N2, lot_of_N2]
 data = np.zeros((len(all_sents), 3))
 other_parses = np.zeros(nlinks)
@@ -202,8 +203,12 @@ for sent in range(len(all_sents)):
 
 print(data)
 
-# Best run so far
-# tau = 0.01, x0 = 0.2, adj = 2, noisemag = 1.
+# Reported in CUNY 2017 talk
+#[[ 982.   10.    8.]
+# [ 214.  761.   25.]
+# [   0.  997.    3.]]
+# Good run with 5000 sims
+# tau = 0.01, x0 = 0.2, adj = 2, noisemag = 1., additive noise
 #[[  4.99700000e+03   3.00000000e+00   0.00000000e+00]
 # [  8.66000000e+02   4.13200000e+03   2.00000000e+00]
 # [  0.00000000e+00   5.00000000e+03   0.00000000e+00]]

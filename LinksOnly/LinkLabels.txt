@@ -1,0 +1,8 @@
+Labels for the link dynamics time series files.
+
+Dimension 1: N1-N(V)
+Dimension 2: N1-P(of)
+Dimension 3: P-P(N1)
+Dimension 4: P-Det(N2)
+Dimension 5: N2-N(of)
+Dimension 6: N2-N(V)

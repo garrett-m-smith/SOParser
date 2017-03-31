@@ -6,7 +6,7 @@ Created on Tue Mar 28 17:57:40 2017
 """
 
 import numpy as np
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 #from scipy.integrate import odeint
 
@@ -19,13 +19,21 @@ nlinks = 6
 #              [0, 2, 0, 0, 1, 2],
 #              [2, 0, 0, 0, 2, 1]])
 
-# My original idea
-W = np.array([[1., 2, 0, 0, 0, 2], 
-              [2, 1, 2, 0, 2, 0],
-              [0, 2, 1, 2, 0, 0],
-              [0, 0, 2, 1, 2, 0],
-              [0, 2, 0, 2, 1, 2],
-              [2, 0, 0, 0, 2, 1]])
+## My original idea
+#W = np.array([[1., 2, 0, 0, 0, 2], 
+#              [2, 1, 2, 0, 2, 0],
+#              [0, 2, 1, 2, 0, 0],
+#              [0, 0, 2, 1, 2, 0],
+#              [0, 2, 0, 2, 1, 2],
+#              [2, 0, 0, 0, 2, 1]])
+# More constraining interactions
+k = 2
+W = np.array([[1, k, 0, k, 0, k],
+              [k, 1, k, 0, k, 0],
+              [0, k, 1, k, 0, k],
+              [k, 0, k, 1, k, 0],
+              [0, k, 0, k, 1, k],
+              [k, 0, k, 0, 2, 1]])
 
 link_names = ['N1->N(V)', 'N1->N(P)', 'P->P(N1)', 'P->Det(N2)', 
 'N2->N(P}', 'N2->N(V)']
@@ -42,17 +50,40 @@ def dyn(x, t):
 
 #xhist = odeint(dyn, x0, tvec)
 
+# Params from CUNY 2017 animations
+box_of_N2 = np.array([0.9, 0.3, 0.9, 0.9, 0.9, 0.9])
+group_of_N2 = np.array([0.6, 0.6, 0.6, 0.9, 0.9, 0.9])
+lot_of_N2 = np.array([0.3, 0.9, 0.3, 0.9, 0.9, 0.9])
+
+ipt = box_of_N2
+#ipt = group_of_N2
+#ipt = lot_of_N2
+
+tau = 0.01
+nsec = 15
+tvec = np.linspace(0, nsec, nsec/tau + 1)
+x0 = np.array([0.2] * nlinks)
+adj = 2.
+# Setting first word to between its current state and 1
+x0[0] = x0[0] + (1 - x0[0]) / adj
+xhist = np.zeros((len(tvec), nlinks))
+xhist[0,] = x0
+#noisemag = 1.5 # Used for MC simulations
+noisemag = 0.5 # less noisy for visualization
+noise = np.random.normal(0, noisemag, xhist.shape)
+
+
 # Individual runs
 for t in range(1, len(tvec)):
-    xhist[t,:] = (xhist[t-1,] + tau * (xhist[t-1,] 
-    * (1 - W @ xhist[t-1,]) + noise[t,:]))
+    xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
+    * (ipt - W @ (ipt * xhist[t-1,])) + noise[t,:]), -0.1, 1.1)
     
-    if t == 30:
+    if t == 100:
         # Turn boost P-P(N1) = intro Prep
         xhist[t,2] = xhist[t,2] + (1 - xhist[t,2]) / adj
         # Also turn on its competitor: N1-N(P)
         xhist[t,1] = xhist[t,1] + (1 - xhist[t,1]) / adj
-    if t == 60:
+    if t == 200:
         # Intro N2-related links: P-Det(N2)
         xhist[t,3] = xhist[t,3] + (1 - xhist[t,3]) / adj
         # N2-N(P)
@@ -60,6 +91,10 @@ for t in range(1, len(tvec)):
         # N2-N(V)
         xhist[t,4] = xhist[t,4] + (1 - xhist[t,4]) / adj
 
+#np.savetxt('box-N1-headed.csv', xhist.T, delimiter = ',', fmt = '%6f')
+#np.savetxt('group-N1-headed.csv', xhist.T, delimiter = ',', fmt = '%6f')
+#np.savetxt('group-N2-headed.csv', xhist.T, delimiter = ',', fmt = '%6f')
+#np.savetxt('lot-N2-headed.csv', xhist.T, delimiter = ',', fmt = '%6f')
 
 plt.figure()
 plt.ylim(-0.1, 1.1)
