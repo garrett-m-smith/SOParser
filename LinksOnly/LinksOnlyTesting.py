@@ -89,7 +89,7 @@ for t in range(1, len(tvec)):
         # N2-N(P)
         xhist[t,4] = xhist[t,4] + (1 - xhist[t,4]) / adj
         # N2-N(V)
-        xhist[t,4] = xhist[t,4] + (1 - xhist[t,4]) / adj
+        xhist[t,4] = xhist[t,5] + (1 - xhist[t,5]) / adj
 
 #np.savetxt('box-N1-headed.csv', xhist.T, delimiter = ',', fmt = '%6f')
 #np.savetxt('group-N1-headed.csv', xhist.T, delimiter = ',', fmt = '%6f')
