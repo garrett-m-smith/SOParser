@@ -58,4 +58,7 @@ Notes on 24.03.:
 	States now start off of the fixed points, i.e., 0 < x0 < 1.
 	Ugh, see top of file...
 	
-
+13.04.:
+	Not implemented idea for how to "close" attachment sites: Use a threshold a la a neural net, e.g.,
+	dx/dt = x((input - threshold) - W @ (input * x))
+	Thus, when there is little input to an attachment site, the link's effect growth rate will be < 0, making 0 on that dimension a stable fixed point. The threshold could be static (e.g., 0.1) or dynamic, e.g., making it equal to some proportion of the current avg. link strength or proportional to the total link activation, etc. Would need to test the dynamics rigorously, but could be done. See how original Soparse (2004) did it, as well as possibly Wilson et al. (2000).

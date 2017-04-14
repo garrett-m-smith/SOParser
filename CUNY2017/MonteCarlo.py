@@ -3,22 +3,16 @@
 Created on Wed Mar 29 12:54:14 2017
 
 @author: garrettsmith
-
-Introducing feature vectors
 """
 
 import numpy as np
-#import matplotlib.pyplot as plt
-
-def cos_sim(v1, v2):
-    return (v1 @ v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
 
 nlinks = 6
-link_names = ['N1->N(V)', 'N1->N(P)', 'P->P(N1)', 'P->Det(N2)', 
-'N2->N(P)', 'N2->N(V)']
+link_names = ['N1-Verb', 'N1-of', 'of-N1', 'of-N2', 'N2-of', 'N2-V']
 
 
-# Setting the LV growth rates to plausible values given our feature cline
+# Setting the LV growth rates to plausible values given our feature cline.
+# Each dimension corresponds to the links in link_labels above.
 box_of_N2 = np.array([0.9, 0.3, 0.9, 0.9, 0.9, 0.9])
 group_of_N2 = np.array([0.6, 0.6, 0.6, 0.9, 0.9, 0.9])
 lot_of_N2 = np.array([0.3, 0.9, 0.3, 0.9, 0.9, 0.9])
@@ -32,76 +26,7 @@ W = np.array([[1, k, 0, k, 0, k],
               [0, k, 1, k, 0, k],
               [k, 0, k, 1, k, 0],
               [0, k, 0, k, 1, k],
-              [k, 0, k, 0, 2, 1]])
-
-
-## Individual runs
-#ipt = box_of_N2
-#ipt = group_of_N2
-#ipt = lot_of_N2
-
-## Time constant of the dynamics
-#tau = 0.1
-#
-## Length of simulation in arbitrary time units
-#nsec = 50
-#
-## Time vector for simulation
-#tvec = np.linspace(0, nsec, nsec/tau + 1)
-#
-## Initial conditions: here all at 0.2
-#x0 = np.array([0.2] * nlinks)
-#
-## How much to bump up the activation when a phonological form comes in
-#adj = 2.
-#
-## Setting first word to between its current state and 1
-#x0[0] = x0[0] + (1 - x0[0]) / adj
-#xhist = np.zeros((len(tvec), nlinks))
-#xhist[0,] = x0
-#noisemag = 0.1
-#noise = np.random.normal(0, noisemag, xhist.shape)
-
-# Individual runs
-#for t in range(1, len(tvec)):
-#    xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
-#    * (ipt - W @ (ipt * xhist[t-1,]) + noise[t,:])), -0.1, 1.1)
-##    xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
-##    * (ipt - W @ (ipt * xhist[t-1,]))), -0.1, 1.1)
-#    
-#    if t == 100:
-#        # Turn boost P-P(N1) = intro Prep
-#        xhist[t,2] = xhist[t,2] + (1 - xhist[t,2]) / adj
-##        xhist[t,2] = 0.7
-#        # Also turn on its competitor: N1-N(P)
-#        xhist[t,1] = xhist[t,1] + (1 - xhist[t,1]) / adj
-##        xhist[t,1] = 0.7
-#    if t == 200:
-#        # Intro N2-related links: P-Det(N2)
-#        xhist[t,3] = xhist[t,3] + (1 - xhist[t,3]) / adj
-##        xhist[t,3] = 0.7
-#        # N2-N(P)
-#        xhist[t,4] = xhist[t,4] + (1 - xhist[t,4]) / adj
-##        xhist[t,4] = 0.7
-#        # N2-N(V)
-#        xhist[t,5] = xhist[t,5] + (1 - xhist[t,5]) / adj
-##        xhist[t,5] = 0.7
-#
-#
-#plt.figure()
-#plt.ylim(-0.1, 1.1)
-#for d in range(xhist.shape[1]):
-#    plt.plot(xhist[:,d], label = link_names[d])
-#    xpos = d * (len(xhist[:,d]) / len(link_names))
-#    ypos = xhist[xpos, d]
-#    plt.text(xpos, ypos, link_names[d])
-##plt.legend()
-#plt.legend(bbox_to_anchor = (1, 1.03))
-#plt.show()
-#
-#for d in range(len(link_names)):
-#    print('{}:\t{}'.format(link_names[d], np.round(xhist[-1,d], 1)))
-    
+              [k, 0, k, 0, k, 1]])
 
 ## Monte Carlo
 tau = 0.01
