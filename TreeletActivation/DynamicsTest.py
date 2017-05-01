@@ -40,7 +40,7 @@ def dyn(x, t, k, feat_overlap, theta):
     return dx
     
 #x0 = np.random.uniform(0.01, 0.1, size = 5)
-tvec = np.linspace(0, 100, 1000)
+tvec = np.linspace(0, 1000, 4000)
 #soln = odeint(dyn, x0, tvec, args = (k, feat_overlap, theta))
 #
 #labels = ['l1', 'l2', 'a_these', 'a_dog', 'a_dogs']
@@ -65,6 +65,7 @@ for rep in range(nrep):
         nincorrect += 1
     else:
         nother += 1
-#        print(np.round(soln[-1,:]))
+        print('Init: {}'.format(np.round(x0, 2)), 
+        'Final: {}'.format(np.round(soln[-1,:], 2)))
 
-print('# Correct: {}\n# Incorrect: {}\n# Other: {}'.format(ncorrect, nincorrect, nother))
+print('Correct: {}\nIncorrect: {}\nOther: {}'.format(ncorrect, nincorrect, nother))

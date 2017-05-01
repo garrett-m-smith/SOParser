@@ -35,6 +35,10 @@ class Treelet(object):
         # feat. vec.
         self.phon_form = phon_form
         
+        # Init activation & threshold
+        self.activation = 0.01
+        self.threshold = 0.1
+        
         # Making the mother node
         self.mother = Node('mother', mother_feat)
         
