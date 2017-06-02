@@ -62,3 +62,9 @@ Notes on 24.03.:
 	Not implemented idea for how to "close" attachment sites: Use a threshold a la a neural net, e.g.,
 	dx/dt = x((input - threshold) - W @ (input * x))
 	Thus, when there is little input to an attachment site, the link's effect growth rate will be < 0, making 0 on that dimension a stable fixed point. The threshold could be static (e.g., 0.1) or dynamic, e.g., making it equal to some proportion of the current avg. link strength or proportional to the total link activation, etc. Would need to test the dynamics rigorously, but could be done. See how original Soparse (2004) did it, as well as possibly Wilson et al. (2000).
+	
+31.05.:
+	Have a look at Sprott et al. 2005 and Wildenberg et al. 2006 for possible way of finding Lyapunov functions for the CUNY model! See also Hirsch, Smale, & Devaney text book for 'separation of variables' approach to Lyapunov fn.
+	
+02.06.:
+	Picking up again where I left off. First change: added a fn. to Treelets object to calculate the feature match between all linked attachment sites.

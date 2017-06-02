@@ -8,13 +8,13 @@ Testing the equations for the treelet + activations system
 
 Results: seems to behave as intended: rates of correct and incorrect parses
 correlate with the relative feature overlap between 'these' and the nouns. 
-There are a number of 'other' parses: the origin, which is a non-hyperbolic
-fixed point, possibly non-isolated, and configurations in which one link wins,
-but all treelets are fully activated. This latter case corresponds to a saddle
-point in the phase space, four eigenvalues of which are negative and one of
-which is positive. Maybe the system gets onto that stable manifold somehow?
+There seem to be two 'other' parses: the origin, which is a non-hyperbolic
+fixed point, possibly non-isolated, and [0, 1, 0, 0, 1].
 
-At any rate, these are encouraging results.
+At any rate, these are encouraging results. A caveat: all of the treelets are
+introduced simulatneuosly; only the initial conditions are random. Introducing
+the treelets one at a time will change things some, but this basic test is a 
+good start.
 """
 
 import numpy as np
@@ -50,13 +50,16 @@ tvec = np.linspace(0, 1000, 4000)
 #plt.show()
 
 # Monte-Carlo runs with random initial conditions in [-0.1, 0.1]
-nrep = 1000
+nrep = 10000
 correct_parse = np.array([0., 1, 1, 0, 1])
 ncorrect = 0
 incorrect_parse = np.array([1., 0, 1, 1, 0])
 nincorrect = 0
 nother = 0
 for rep in range(nrep):
+    if rep % 100 == 0:
+        print('Repetition # {}'.format(rep))
+    
     x0 = np.random.uniform(0.0, 0.1, 5)
     soln = odeint(dyn, x0, tvec, args = (k, feat_overlap, theta))
     if np.all(np.equal(np.round(soln[-1,:]), correct_parse)):
