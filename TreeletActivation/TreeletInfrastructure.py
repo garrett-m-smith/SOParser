@@ -120,6 +120,33 @@ class Lexicon(object):
         self._make_links()
         self._calc_feature_match()
         
+    def initialize_run(self, ntsteps, init_cond = None):
+        """Sets up activation history vectors for treelets and links, and sets
+        initial conditions. Right now, can only do random initial conditions."""
+        if init_cond is None:
+            x0 = np.random.uniform(0, 0.2, size = self.nlinks + self.ntreelets)
+        for treelet in self.treelets:
+            self.treelets[treelet].activation = np.zeros(ntsteps)
+        for link in self.links:
+            self.links[link]['link_strength'] = np.zeros(ntsteps)
+        self.update_state(0, x0)
+    
+    def get_mother_competitors(self, link, tstep):
+        """Returns an np array of the link strengths of the mother-end
+        competitors for a link at time tstep."""
+        pass
+    
+    def get_daughter_competitors(self, link):
+        """Returns an np array of the link strengths of the daughter-end
+        competitors for a link at time tstep."""
+        self.treelets[link]
+    
+    def update_state(self, tstep, vals = None):
+        """Performs a single Euler forward iteration to the state of 
+        the system."""
+        pass
+
+    
     # Later, possibly add plotting methods from NetworkX to make figures
     # showing the links in the form of a directed graph!
 
@@ -129,4 +156,5 @@ if __name__ == '__main__':
     lex = Lexicon()
     # Get treelets read in
     lex.build_lexicon('Lexicon.yaml')
+    lex.initialize_run(10)
     

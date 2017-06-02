@@ -67,4 +67,5 @@ Notes on 24.03.:
 	Have a look at Sprott et al. 2005 and Wildenberg et al. 2006 for possible way of finding Lyapunov functions for the CUNY model! See also Hirsch, Smale, & Devaney text book for 'separation of variables' approach to Lyapunov fn.
 	
 02.06.:
-	Picking up again where I left off. First change: added a fn. to Treelets object to calculate the feature match between all linked attachment sites.
+	Picking up again where I left off. First change: added a fn. to Treelets object to calculate the feature match between all linked attachment sites. Sketched dynamics functions (not running). I think I might have to switch to a different way of tracking the link strengths and treelet activations. Need one big vector or multi-dimensional array?... At the very least, I need a way of getting all of the numerical state variables into one place quickly, even if they're stored in the current dict system.
+
