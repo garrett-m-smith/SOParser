@@ -1,0 +1,25 @@
+# Trying out YAML for inputing words to the lexicon of the parser
+the:
+    phon_form: the
+    mother_feat: [1, 0, 1, 0]
+    daughters: null
+    
+dog:
+    phon_form: dog
+    mother_feat: [0, 1, 0, 1]
+    daughters:
+        Det: [1, 0.1, 0.9, 0.01]
+        Adj: [0, 1, 1, 0]
+
+eats_intrans:
+    phon_form: eats
+    mother_feat: [1, 0, 0, 1]
+    daughters:
+        Subj: [0, 1, 0, 1]
+
+eats_trans:
+    phon_form: eats
+    mother_feat: [1, 0, 0, 1]
+    daughters:
+        Subj: [0, 1, 0, 1]
+        DO: [0, 1, 0, 1]
