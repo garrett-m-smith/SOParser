@@ -28,7 +28,7 @@ class Node(object):
 
 class Treelet(object):
     """A container for all of the nodes in a treelet. Consists of a mother
-    node and a list of daughter nodes."""
+    node and a dict of daughter nodes."""
     def __init__(self, name, input_dict):
         # daughters arg should be dict of dicts: ea. entry has a name and a
         # feat. vec.
@@ -60,7 +60,11 @@ class Treelet(object):
         self.activation = new_act
 
 class Lexicon(object):
-    """Container for Treelets and links, possibly including dynamics."""
+    """Container for Treelets and links, possibly including dynamics. Has
+    two parts: a dict of treelets with their associated properties and a dict
+    of links. The links dict has three indices (i.e., nested dicts): head
+    node on dependent, other (head of phrase) treelet, daughter node on the 
+    other treelet."""
     
     def __init__(self):
         # The list of all Treelet objects in the lexicon
