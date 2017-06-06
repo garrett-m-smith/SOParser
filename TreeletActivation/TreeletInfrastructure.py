@@ -7,11 +7,16 @@ Created on Fri Apr 28 10:32:45 2017
 Link dyn. & treelet activations system: Treelet structures
 
 This script will be used to set up Node and Treelet classes with associated
-properties, methods, and algorithms
+properties, methods, and algorithms.
+
+Notes for future:
+    -Link strength is stored as an entry in a dict, while treelet activation
+    is an attribute of treelet object. Should change to make consistent.
 """
 
 import yaml
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Node(object):
     """Basic structure for nodes/attachment sites on a treelet. Current 
@@ -72,6 +77,8 @@ class Lexicon(object):
         self.ntreelets = len(self.treelets)
         self.links = {}
         self.nlinks = len(self.treelets)
+        self.initialized = False
+        self.ntsteps = 0
         
     def add_treelet(self, *args):
         """Function for adding a new treelet to the lexicon. Checks if the
@@ -128,28 +135,78 @@ class Lexicon(object):
         """Sets up activation history vectors for treelets and links, and sets
         initial conditions. Right now, can only do random initial conditions."""
         if init_cond is None:
-            x0 = np.random.uniform(0, 0.2, size = self.nlinks + self.ntreelets)
-        for treelet in self.treelets:
+            l0 = np.random.uniform(0, 0.2, size = self.nlinks)
+            a0 = np.random.uniform(0, 0.2, size = self.ntreelets)
+        for n, treelet in enumerate(self.treelets):
             self.treelets[treelet].activation = np.zeros(ntsteps)
-        for link in self.links:
-            self.links[link]['link_strength'] = np.zeros(ntsteps)
-        self.update_state(0, x0)
-    
-    def get_mother_competitors(self, link, tstep):
-        """Returns an np array of the link strengths of the mother-end
-        competitors for a link at time tstep."""
-        pass
-    
-    def get_daughter_competitors(self, link):
-        """Returns an np array of the link strengths of the daughter-end
-        competitors for a link at time tstep."""
-        self.treelets[link]
-    
-    def update_state(self, tstep, vals = None):
-        """Performs a single Euler forward iteration to the state of 
-        the system."""
-        pass
+            self.treelets[treelet].activation[0] = a0[n]
+        n = -1
+        for dep in self.links:
+            for head in self.links[dep]:
+                for attch in self.links[dep][head]:
+                    n += 1
+                    self.links[dep][head][attch]['link_strength'] = np.zeros(ntsteps)
+                    self.links[dep][head][attch]['link_strength'][0] = l0[n]
+        self.initialized = True
+        self.ntsteps = ntsteps
 
+    def test_dyn(self):
+        assert self.initialized is True, "System has not been initialized."
+        for t in range(1, 10):
+            for dep in self.links:
+                for head in self.links[dep]:
+                    for attch in self.links[dep][head]:
+                        prev = self.links[dep][head][attch]['link_strength'][t-1]
+                        self.links[dep][head][attch]['link_strength'][t] = prev + 1
+    
+    def get_mother_competitors(self, dep, head, attch, tstep):
+        """Returns an np array of the link strengths of the mother-end 
+        (dependent) competitors for a link at time tstep."""
+        others = [x for x in self.links[dep].keys()]
+        vals = []
+        for comp in others:
+            other_attch = [x for x in self.links[dep][comp].keys()]
+            for a_comp in other_attch:
+                if comp == head and a_comp == attch:
+                    pass
+                else:
+                    vals.append(self.links[dep][comp][a_comp]['link_strength'][tstep])
+        return np.array(vals)
+    
+    def get_daughter_competitors(self, dep, head, attch, tstep):
+        """Returns an np array of the link strengths of the daughter-end
+        (phrase head) competitors for a link at time tstep."""
+        exclude = [dep, head, attch]
+        others = [x for x in self.links.keys() if x not in exclude]
+        vals = []
+        for comp in others:
+            vals.append(self.links[comp][head][attch]['link_strength'][tstep])
+        return np.array(vals)
+    
+    def single_run(self, tau, k):
+        """Only does link dynamics; no activation dynamics yet."""
+        assert self.initialized is True, "System has not been initialized."
+        for t in range(1, self.ntsteps):
+            for dep in self.links:
+                for head in self.links[dep]:
+                    for attch in self.links[dep][head]:
+                        comp_d = self.get_daughter_competitors(dep, head, attch, t-1)
+                        comp_a = self.get_mother_competitors(dep, head, attch, t-1)
+                        prev = self.links[dep][head][attch]['link_strength'][t-1]
+                        curr = prev + tau * (prev
+                                             * (1 - prev - k * comp_d.sum()
+                                             - k * comp_a.sum()))
+                        self.links[dep][head][attch]['link_strength'][t] = curr
+    
+    def plot_traj(self):
+        for dep in self.links:
+            for head in self.links[dep]:
+                for attch in self.links[dep][head]:
+                    if self.links[dep][head][attch]['link_strength'][-1] > 0.6:
+                        plt.plot(self.links[dep][head][attch]['link_strength'],
+                             label = '{}-{}-{}'.format(dep, head, attch))
+        plt.legend()
+        plt.show()
     
     # Later, possibly add plotting methods from NetworkX to make figures
     # showing the links in the form of a directed graph!
@@ -160,5 +217,8 @@ if __name__ == '__main__':
     lex = Lexicon()
     # Get treelets read in
     lex.build_lexicon('Lexicon.yaml')
-    lex.initialize_run(10)
+    lex.initialize_run(2000)
+#    lex.test_dyn()
+    lex.single_run(0.01, 2)
+    lex.plot_traj()
     
