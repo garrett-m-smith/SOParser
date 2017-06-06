@@ -73,3 +73,5 @@ Notes on 24.03.:
 	Ok, Numpy arrays will be difficult as well. Reason: treelets can take different numbers of dependents. Either I caluculate beforehand what how many links I'll need and label them consistently, or I switch back to structured/record arrays, where I can create rows with just the info I need. Just gotta figure out the fucking indexing...
 
 06.06.: Basic dynamics are running! Winner takes all works! Competition is correct! Now, need to add in treelet activation dynamics (with their thresholds), feature vectors, and possibly link strength thresholds.
+	Feature multiplication is now working, put in Muezzinoglu et al. (2010).
+	I'm noticing that sometimes we get loops, e.g., 'dog' is the subject of 'eats' and 'eats' is the determiner of 'dog.' Need a way of ruling this out, because I'm not sure using the feature match will be enough. Maybe temporal asymmetry will work though, i.e., activating treelets sequentially instead of in order.

@@ -17,9 +17,15 @@ eats_intrans:
     daughters:
         Subj: [0, 1, 0, 1]
 
-eats_trans:
-    phon_form: eats
-    mother_feat: [1, 0, 0, 1]
-    daughters:
-        Subj: [0, 1, 0, 1]
-        DO: [0, 1, 0, 1]
+#eats_trans:
+#    phon_form: eats
+#    mother_feat: [1, 0, 0, 1]
+#    daughters:
+#        Subj: [0, 1, 0, 1]
+#        DO: [0, 1, 0, 1]
+#
+#yellow:
+#    phon_form: yellow
+#    mother_feat: [0.1, 0.9, 0.9, 0]
+#    daughters:
+#        Adv: [0, 0.5, 0.5, 1]

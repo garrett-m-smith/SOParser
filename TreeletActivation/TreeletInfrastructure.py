@@ -12,6 +12,9 @@ properties, methods, and algorithms.
 Notes for future:
     -Link strength is stored as an entry in a dict, while treelet activation
     is an attribute of treelet object. Should change to make consistent.
+    -Effect of competition parameter k seems to be different than in other
+    LV systems (Frank 2014, Fukai et al. 1997, etc.). WTA might be available
+    for k < 1...
 """
 
 import yaml
@@ -51,6 +54,7 @@ class Treelet(object):
         self.daughters = {}
         
         # Adding daughter attachment sites
+        print()
         daughters = input_dict['daughters']
         if daughters is not None:
             for attch in daughters:
@@ -161,7 +165,8 @@ class Lexicon(object):
     
     def get_mother_competitors(self, dep, head, attch, tstep):
         """Returns an np array of the link strengths of the mother-end 
-        (dependent) competitors for a link at time tstep."""
+        (dependent) competitors for a link at time tstep. Also multiplies
+        them by their link strength."""
         others = [x for x in self.links[dep].keys()]
         vals = []
         for comp in others:
@@ -170,17 +175,20 @@ class Lexicon(object):
                 if comp == head and a_comp == attch:
                     pass
                 else:
-                    vals.append(self.links[dep][comp][a_comp]['link_strength'][tstep])
+                    f = self.links[dep][comp][a_comp]['feature_match']
+                    vals.append(f * self.links[dep][comp][a_comp]['link_strength'][tstep])
         return np.array(vals)
     
     def get_daughter_competitors(self, dep, head, attch, tstep):
         """Returns an np array of the link strengths of the daughter-end
-        (phrase head) competitors for a link at time tstep."""
+        (phrase head) competitors for a link at time tstep. Also multiplies
+        them by their link strengths."""
         exclude = [dep, head, attch]
         others = [x for x in self.links.keys() if x not in exclude]
         vals = []
         for comp in others:
-            vals.append(self.links[comp][head][attch]['link_strength'][tstep])
+            f = self.links[comp][head][attch]['feature_match']
+            vals.append(f * self.links[comp][head][attch]['link_strength'][tstep])
         return np.array(vals)
     
     def single_run(self, tau, k):
@@ -202,10 +210,11 @@ class Lexicon(object):
         for dep in self.links:
             for head in self.links[dep]:
                 for attch in self.links[dep][head]:
-                    if self.links[dep][head][attch]['link_strength'][-1] > 0.6:
+                    if self.links[dep][head][attch]['link_strength'][-1] > 0.0:
                         plt.plot(self.links[dep][head][attch]['link_strength'],
                              label = '{}-{}-{}'.format(dep, head, attch))
         plt.legend()
+        plt.title('Link strengths')
         plt.show()
     
     # Later, possibly add plotting methods from NetworkX to make figures
@@ -217,7 +226,7 @@ if __name__ == '__main__':
     lex = Lexicon()
     # Get treelets read in
     lex.build_lexicon('Lexicon.yaml')
-    lex.initialize_run(2000)
+    lex.initialize_run(3000)
 #    lex.test_dyn()
     lex.single_run(0.01, 2)
     lex.plot_traj()
