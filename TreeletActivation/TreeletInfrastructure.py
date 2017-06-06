@@ -15,6 +15,8 @@ Notes for future:
     -Effect of competition parameter k seems to be different than in other
     LV systems (Frank 2014, Fukai et al. 1997, etc.). WTA might be available
     for k < 1...
+    -The treelet activation threshold is another important parameter. 0.1
+    seems too low, so need to find a principled way of setting it.
 """
 
 import yaml
@@ -43,9 +45,8 @@ class Treelet(object):
         self.phon_form = input_dict['phon_form']
         self.name = name
         
-        # Init activation & threshold
+        # Init activation
         self.activation = 0.01
-        self.threshold = 0.1
         
         # Making the mother node
         self.mother = Node({'mother': input_dict['mother_feat']})
@@ -83,6 +84,7 @@ class Lexicon(object):
         self.nlinks = len(self.treelets)
         self.initialized = False
         self.ntsteps = 0
+        self.act_threshold = 0.2
         
     def add_treelet(self, *args):
         """Function for adding a new treelet to the lexicon. Checks if the
@@ -139,8 +141,8 @@ class Lexicon(object):
         """Sets up activation history vectors for treelets and links, and sets
         initial conditions. Right now, can only do random initial conditions."""
         if init_cond is None:
-            l0 = np.random.uniform(0, 0.2, size = self.nlinks)
-            a0 = np.random.uniform(0, 0.2, size = self.ntreelets)
+            l0 = np.random.uniform(0, 0.1, size = self.nlinks)
+            a0 = np.random.uniform(0, 0.1, size = self.ntreelets)
         for n, treelet in enumerate(self.treelets):
             self.treelets[treelet].activation = np.zeros(ntsteps)
             self.treelets[treelet].activation[0] = a0[n]
@@ -195,16 +197,40 @@ class Lexicon(object):
         """Only does link dynamics; no activation dynamics yet."""
         assert self.initialized is True, "System has not been initialized."
         for t in range(1, self.ntsteps):
+            # Doing links first
             for dep in self.links:
                 for head in self.links[dep]:
                     for attch in self.links[dep][head]:
                         comp_d = self.get_daughter_competitors(dep, head, attch, t-1)
                         comp_a = self.get_mother_competitors(dep, head, attch, t-1)
                         prev = self.links[dep][head][attch]['link_strength'][t-1]
-                        curr = prev + tau * (prev
+                        curr = prev + tau * (prev 
+                                             * (self.treelets[dep].activation[t-1] + self.treelets[head].activation[t-1])
                                              * (1 - prev - k * comp_d.sum()
                                              - k * comp_a.sum()))
                         self.links[dep][head][attch]['link_strength'][t] = curr
+            # Next, treelet activations
+            for tr in self.treelets:
+                prev = self.treelets[tr].activation[t-1]
+                # To calculate the average link activation
+                coef = 1. / (len(self.treelets[tr].daughters) + 1)
+                # Calculate sum of all links attaching to a treelet
+                others = [x for x in self.treelets.keys() if x is not tr]
+                vals = []
+                for incoming in others:
+                    # links with tr as dependent
+                    if len(self.treelets[incoming].daughters) > 0:
+                        for attch in self.links[tr][incoming]:
+                            vals.append(self.links[tr][incoming][attch]['link_strength'][t-1])
+                    if len(self.treelets[tr].daughters) > 0:
+                        daughters = [x for x in self.treelets[tr].daughters.keys()]
+                        for d in daughters:
+                            vals.append(self.links[incoming][tr][d]['link_strength'][t-1])
+                vals = np.array(vals)
+                curr = prev + tau * ((-self.act_threshold 
+                                      + coef * vals.sum()) * prev
+                                     * (1 - prev))
+                self.treelets[tr].activation[t] = curr
     
     def plot_traj(self):
         for dep in self.links:
@@ -213,8 +239,14 @@ class Lexicon(object):
                     if self.links[dep][head][attch]['link_strength'][-1] > 0.0:
                         plt.plot(self.links[dep][head][attch]['link_strength'],
                              label = '{}-{}-{}'.format(dep, head, attch))
-        plt.legend()
+        plt.legend(bbox_to_anchor = (1.05, 1))
         plt.title('Link strengths')
+        plt.show()
+        
+        for tr in self.treelets:
+            plt.plot(self.treelets[tr].activation, label = tr)
+        plt.legend()
+        plt.title('Treelet activations')
         plt.show()
     
     # Later, possibly add plotting methods from NetworkX to make figures
@@ -226,7 +258,7 @@ if __name__ == '__main__':
     lex = Lexicon()
     # Get treelets read in
     lex.build_lexicon('Lexicon.yaml')
-    lex.initialize_run(3000)
+    lex.initialize_run(5000)
 #    lex.test_dyn()
     lex.single_run(0.01, 2)
     lex.plot_traj()

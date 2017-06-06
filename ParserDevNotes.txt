@@ -75,3 +75,6 @@ Notes on 24.03.:
 06.06.: Basic dynamics are running! Winner takes all works! Competition is correct! Now, need to add in treelet activation dynamics (with their thresholds), feature vectors, and possibly link strength thresholds.
 	Feature multiplication is now working, put in Muezzinoglu et al. (2010).
 	I'm noticing that sometimes we get loops, e.g., 'dog' is the subject of 'eats' and 'eats' is the determiner of 'dog.' Need a way of ruling this out, because I'm not sure using the feature match will be enough. Maybe temporal asymmetry will work though, i.e., activating treelets sequentially instead of in order.
+	Treelet activations are now functional as well. Currently, all treelet activations seem to eventually go to 1, which is a problem. When you hear a sentence, your whole lexicon doesn't light up. Next step is introducing words one at a time, which, coupled with a low starting activation, should help with this problem (I hope). Also, it might help if the feature vectors weren't so short and arbitrary. Considerations: make them longer, make the similarity differences between incompatible attachment sites bigger...
+	Tomorrow: word-by-word parsing (via activation boost), explore feature vectors, find reasonable parameters, test on interesting sentences, results to Whit.
+	
