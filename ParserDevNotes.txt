@@ -81,3 +81,6 @@ Notes on 24.03.:
 07.06. Simple word-by-word learning is functional (but not yet doing things right; I think it's the feature vectors...) First step = getting a sentence parsing method working.
 	Basic, simple sentence parsing is working!!
 	Need to have mapping from ambiguous input word (like 'eats') to all of its possible versions. Possibly use word.starts_with(...).
+	Open question: should introduction of new words be done at set intervals (RSVP), or should we come up with some automatic system for inputting next word (a la self-paced reading)?
+	Ok, problem: Oftentimes 'eat_trans' beats out 'eat_intrans' even though there's no DO. This seems to stem from it getting more activation from spurious links to its DO attch site. How to prevent?
+

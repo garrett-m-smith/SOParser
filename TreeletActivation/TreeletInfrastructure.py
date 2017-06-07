@@ -16,6 +16,10 @@ Notes for future:
     seems too low, so need to find a principled way of setting it.
     -Other parameters to keep an eye on: the treelet activation boost used
     when a new word is perceived, the length of time each word is presented.
+    Indeed, the interval between words seems to have an effect on parsing, at
+    least on treelet activations.
+    -Initial conditions seem to play a large role in determining which
+    treelets remain active.
 """
 
 import yaml
@@ -83,7 +87,7 @@ class Lexicon(object):
         self.nlinks = len(self.treelets)
         self.initialized = False
         self.ntsteps = 0
-        self.act_threshold = 0.2
+        self.act_threshold = 0.1
         
     def add_treelet(self, *args):
         """Function for adding a new treelet to the lexicon. Checks if the
@@ -210,15 +214,17 @@ class Lexicon(object):
                         prev = self.links[dep][head][attch]['link_strength'][t-1]
                         f = self.links[dep][head][attch]['feature_match']
                         curr = prev + tau * (prev * f
-                                             * (self.treelets[dep].activation[t-1] + self.treelets[head].activation[t-1])
+                                             * (self.treelets[dep].activation[t-1] + self.treelets[head].activation[t-1])# - self.act_threshold)
                                              * (1 - prev - k * comp_d.sum()
                                              - k * comp_a.sum()))
                         self.links[dep][head][attch]['link_strength'][t] = curr
             
             # Next, treelet activations
             for word_nr, word in enumerate(words):
+                ambig_list = [x for x in list(self.treelets.keys()) if x.startswith(word)]
                 if t == (word_nr + 1) * interval:
-                    self.treelets[word].activation[t-1] += boost
+                    for a in ambig_list:
+                        self.treelets[a].activation[t-1] += boost
                 
             for tr in self.treelets:
                 prev = self.treelets[tr].activation[t-1]
@@ -247,14 +253,14 @@ class Lexicon(object):
         lexicon, runs the dynamics, and plots the trajectories.
         """
         words = sentence.lower().split(sep=' ')
-        lex_words = list(self.treelets.keys())
-        for word in words:
-            if word not in lex_words:
-                ambig_list = [x for x in lex_words if x.startswith(word)]
-                if ambig_list:
-                    words.remove(word)
-                    words.extend(ambig_list)
-        self.initialize_run(ntsteps=len(words) * interval + 5000, init_cond=0.05)
+#        lex_words = list(self.treelets.keys())
+#        for word in words:
+#            if word not in lex_words:
+#                ambig_list = [x for x in lex_words if x.startswith(word)]
+#                if ambig_list:
+#                    words.remove(word)
+#                    words.extend(ambig_list)
+        self.initialize_run(ntsteps=len(words) * interval + 10000, init_cond=0.02)
         self.single_run(tau=0.01, k=2, boost=0.2, words=words, interval=interval)
         self.plot_traj()
     
@@ -288,4 +294,4 @@ if __name__ == '__main__':
 #    lex.test_dyn()
 #    lex.single_run(tau=0.01, k=2, boost = 0.2)
 #    lex.plot_traj()
-    lex.parse_sentence('The cat eats', 200)
+    lex.parse_sentence('The dog eats', 400)

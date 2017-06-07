@@ -9,7 +9,7 @@ dog:
     phon_form: dog
     mother_feat: [0, 1, 0]
     daughters:
-        Det: [0.5, 0, 0]
+        Det: [1, 0, 0]
 #        Adj: [0, 1, 1, 0]
 
 cat:
@@ -19,18 +19,30 @@ cat:
         Det: [1, 0, 0]
 #        Adj: [0, 1, 1, 0]
 
+#thing:
+#    phon_form: thing
+#    mother_feat: [0, 1, 0]
+#    daughters:
+#        Det: [1, 0, 0]
+        
+#rooster:
+#    phon_form: rooster
+#    mother_feat: [0, 1, 0]
+#    daughters:
+#        Det: [1, 0, 0]
+
 eats_intrans:
     phon_form: eats
     mother_feat: [0, 0, 1]
     daughters:
         Subj: [0, 1, 0]
 
-#eats_trans:
-#    phon_form: eats
-#    mother_feat: [0, 0, 1]
-#    daughters:
-#        Subj: [0, 1, 0]
-#        DO: [0, 1, 0]
+eats_trans:
+    phon_form: eats
+    mother_feat: [0, 0, 1]
+    daughters:
+        Subj: [0, 1, 0]
+        DO: [0, 1, 0]
 
 #yellow:
 #    phon_form: yellow
