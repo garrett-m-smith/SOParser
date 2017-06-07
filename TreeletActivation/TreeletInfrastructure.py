@@ -4,10 +4,7 @@ Created on Fri Apr 28 10:32:45 2017
 
 @author: garrettsmith
 
-Link dyn. & treelet activations system: Treelet structures
-
-This script will be used to set up Node and Treelet classes with associated
-properties, methods, and algorithms.
+Link dyn. & treelet activations system: Treelet structures and dynamics
 
 Notes for future:
     -Link strength is stored as an entry in a dict, while treelet activation
@@ -17,6 +14,8 @@ Notes for future:
     for k < 1...
     -The treelet activation threshold is another important parameter. 0.1
     seems too low, so need to find a principled way of setting it.
+    -Other parameters to keep an eye on: the treelet activation boost used
+    when a new word is perceived, the length of time each word is presented.
 """
 
 import yaml
@@ -137,12 +136,15 @@ class Lexicon(object):
         self._make_links()
         self._calc_feature_match()
         
-    def initialize_run(self, ntsteps, init_cond = None):
+    def initialize_run(self, ntsteps, init_cond=None):
         """Sets up activation history vectors for treelets and links, and sets
         initial conditions. Right now, can only do random initial conditions."""
         if init_cond is None:
-            l0 = np.random.uniform(0, 0.1, size = self.nlinks)
-            a0 = np.random.uniform(0, 0.1, size = self.ntreelets)
+            l0 = np.random.uniform(0, 0.1, size=self.nlinks)
+            a0 = np.random.uniform(0, 0.1, size=self.ntreelets)
+        else:
+            l0 = np.random.uniform(0, 2*init_cond, size=self.nlinks)
+            a0 = np.random.uniform(0, 2*init_cond, size=self.ntreelets)
         for n, treelet in enumerate(self.treelets):
             self.treelets[treelet].activation = np.zeros(ntsteps)
             self.treelets[treelet].activation[0] = a0[n]
@@ -193,10 +195,12 @@ class Lexicon(object):
             vals.append(f * self.links[comp][head][attch]['link_strength'][tstep])
         return np.array(vals)
     
-    def single_run(self, tau, k):
+    def single_run(self, tau, k, boost, words, interval):
         """Only does link dynamics; no activation dynamics yet."""
         assert self.initialized is True, "System has not been initialized."
         for t in range(1, self.ntsteps):
+            if t % 1000 == 0:
+                print('Time step {} of {}'.format(t, self.ntsteps))
             # Doing links first
             for dep in self.links:
                 for head in self.links[dep]:
@@ -204,12 +208,18 @@ class Lexicon(object):
                         comp_d = self.get_daughter_competitors(dep, head, attch, t-1)
                         comp_a = self.get_mother_competitors(dep, head, attch, t-1)
                         prev = self.links[dep][head][attch]['link_strength'][t-1]
-                        curr = prev + tau * (prev 
+                        f = self.links[dep][head][attch]['feature_match']
+                        curr = prev + tau * (prev * f
                                              * (self.treelets[dep].activation[t-1] + self.treelets[head].activation[t-1])
                                              * (1 - prev - k * comp_d.sum()
                                              - k * comp_a.sum()))
                         self.links[dep][head][attch]['link_strength'][t] = curr
+            
             # Next, treelet activations
+            for word_nr, word in enumerate(words):
+                if t == (word_nr + 1) * interval:
+                    self.treelets[word].activation[t-1] += boost
+                
             for tr in self.treelets:
                 prev = self.treelets[tr].activation[t-1]
                 # To calculate the average link activation
@@ -231,6 +241,22 @@ class Lexicon(object):
                                       + coef * vals.sum()) * prev
                                      * (1 - prev))
                 self.treelets[tr].activation[t] = curr
+    
+    def parse_sentence(self, sentence, interval):
+        """Takes an input sentence, breaks it down into words that are in the
+        lexicon, runs the dynamics, and plots the trajectories.
+        """
+        words = sentence.lower().split(sep=' ')
+        lex_words = list(self.treelets.keys())
+        for word in words:
+            if word not in lex_words:
+                ambig_list = [x for x in lex_words if x.startswith(word)]
+                if ambig_list:
+                    words.remove(word)
+                    words.extend(ambig_list)
+        self.initialize_run(ntsteps=len(words) * interval + 5000, init_cond=0.05)
+        self.single_run(tau=0.01, k=2, boost=0.2, words=words, interval=interval)
+        self.plot_traj()
     
     def plot_traj(self):
         for dep in self.links:
@@ -258,8 +284,8 @@ if __name__ == '__main__':
     lex = Lexicon()
     # Get treelets read in
     lex.build_lexicon('Lexicon.yaml')
-    lex.initialize_run(5000)
+#    lex.initialize_run(5000, init_cond=0.05)
 #    lex.test_dyn()
-    lex.single_run(0.01, 2)
-    lex.plot_traj()
-    
+#    lex.single_run(tau=0.01, k=2, boost = 0.2)
+#    lex.plot_traj()
+    lex.parse_sentence('The cat eats', 200)

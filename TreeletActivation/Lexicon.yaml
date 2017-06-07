@@ -1,35 +1,36 @@
 # Trying out YAML for inputing words to the lexicon of the parser
-#the:
-#    phon_form: the
-#    mother_feat: [1, 0, 1, 0]
-#    daughters: null
+# feature vector dimensions: det, n, v
+the:
+    phon_form: the
+    mother_feat: [1, 0, 0]
+    daughters: null
     
 dog:
     phon_form: dog
-    mother_feat: [0, 1, 0, 1]
+    mother_feat: [0, 1, 0]
     daughters:
-        Det: [1, 0.1, 0.9, 0.01]
-        Adj: [0, 1, 1, 0]
+        Det: [0.5, 0, 0]
+#        Adj: [0, 1, 1, 0]
 
 cat:
     phon_form: cat
-    mother_feat: [0, 1, 0, 1]
+    mother_feat: [0, 1, 0]
     daughters:
-        Det: [1, 0.1, 0.9, 0.01]
-        Adj: [0, 1, 1, 0]
+        Det: [1, 0, 0]
+#        Adj: [0, 1, 1, 0]
 
 eats_intrans:
     phon_form: eats
-    mother_feat: [1, 0, 0, 1]
+    mother_feat: [0, 0, 1]
     daughters:
-        Subj: [0, 1, 0, 1]
+        Subj: [0, 1, 0]
 
 #eats_trans:
 #    phon_form: eats
-#    mother_feat: [1, 0, 0, 1]
+#    mother_feat: [0, 0, 1]
 #    daughters:
-#        Subj: [0, 1, 0, 1]
-#        DO: [0, 1, 0, 1]
+#        Subj: [0, 1, 0]
+#        DO: [0, 1, 0]
 
 #yellow:
 #    phon_form: yellow

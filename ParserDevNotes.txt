@@ -78,3 +78,6 @@ Notes on 24.03.:
 	Treelet activations are now functional as well. Currently, all treelet activations seem to eventually go to 1, which is a problem. When you hear a sentence, your whole lexicon doesn't light up. Next step is introducing words one at a time, which, coupled with a low starting activation, should help with this problem (I hope). Also, it might help if the feature vectors weren't so short and arbitrary. Considerations: make them longer, make the similarity differences between incompatible attachment sites bigger...
 	Tomorrow: word-by-word parsing (via activation boost), explore feature vectors, find reasonable parameters, test on interesting sentences, results to Whit.
 	
+07.06. Simple word-by-word learning is functional (but not yet doing things right; I think it's the feature vectors...) First step = getting a sentence parsing method working.
+	Basic, simple sentence parsing is working!!
+	Need to have mapping from ambiguous input word (like 'eats') to all of its possible versions. Possibly use word.starts_with(...).
