@@ -7,7 +7,7 @@ Created on Fri Apr 28 10:32:45 2017
 Link dyn. & treelet activations system: Treelet structures and dynamics
 
 Notes for future:
-    -Link strength is stored as an entry in a dict, while treelet activation
+    -Link strength is stored as an entry in a dictionary, while treelet activation
     is an attribute of treelet object. Should change to make consistent.
     -Effect of competition parameter k seems to be different than in other
     LV systems (Frank 2014, Fukai et al. 1997, etc.). WTA might be available
@@ -281,17 +281,16 @@ class Lexicon(object):
         plt.title('Treelet activations')
         plt.show()
     
-    # Later, possibly add plotting methods from NetworkX to make figures
+    # Later, possibly add plotting methods from the NetworkX package to make figures
     # showing the links in the form of a directed graph!
 
 
 if __name__ == '__main__':
-    # Create a lexicon
+    # Create an empty lexicon
     lex = Lexicon()
-    # Get treelets read in
+    # Get treelets read in from file and sets up links
     lex.build_lexicon('Lexicon.yaml')
-#    lex.initialize_run(5000, init_cond=0.05)
-#    lex.test_dyn()
-#    lex.single_run(tau=0.01, k=2, boost = 0.2)
-#    lex.plot_traj()
-    lex.parse_sentence('The dog eats', 400)
+
+    # Runs the model for the sentence 'the dog eats' with 400 time
+    # steps between each word.
+    lex.parse_sentence('The dog eats', interval=400)
