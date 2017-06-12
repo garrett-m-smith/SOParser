@@ -26,6 +26,7 @@ import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 class Node(object):
     """Basic structure for nodes/attachment sites on a treelet. Current 
     implementation is kludgy (converting dict to list and then indexing),
@@ -58,7 +59,6 @@ class Treelet(object):
         self.daughters = {}
         
         # Adding daughter attachment sites
-        print()
         daughters = input_dict['daughters']
         if daughters is not None:
             for attch in daughters:
@@ -87,7 +87,7 @@ class Lexicon(object):
         self.nlinks = len(self.treelets)
         self.initialized = False
         self.ntsteps = 0
-        self.act_threshold = 0.1
+        self.act_threshold = 0.85
         
     def add_treelet(self, *args):
         """Function for adding a new treelet to the lexicon. Checks if the
@@ -144,8 +144,10 @@ class Lexicon(object):
         """Sets up activation history vectors for treelets and links, and sets
         initial conditions. Right now, can only do random initial conditions."""
         if init_cond is None:
-            l0 = np.random.uniform(0, 0.1, size=self.nlinks)
-            a0 = np.random.uniform(0, 0.1, size=self.ntreelets)
+#            l0 = np.random.uniform(0, 0.1, size=self.nlinks)
+            l0 = np.array([0.05] * self.nlinks)
+#            a0 = np.random.uniform(0, 0.1, size=self.ntreelets)
+            a0 = np.array([0.05] * self.ntreelets)
         else:
             l0 = np.random.uniform(0, 2*init_cond, size=self.nlinks)
             a0 = np.random.uniform(0, 2*init_cond, size=self.ntreelets)
@@ -200,7 +202,7 @@ class Lexicon(object):
         return np.array(vals)
     
     def single_run(self, tau, k, boost, words, interval):
-        """Only does link dynamics; no activation dynamics yet."""
+        """Only does link dynamics."""
         assert self.initialized is True, "System has not been initialized."
         for t in range(1, self.ntsteps):
             if t % 1000 == 0:
@@ -214,9 +216,10 @@ class Lexicon(object):
                         prev = self.links[dep][head][attch]['link_strength'][t-1]
                         f = self.links[dep][head][attch]['feature_match']
                         curr = prev + tau * (prev * f
-                                             * (self.treelets[dep].activation[t-1] + self.treelets[head].activation[t-1])# - self.act_threshold)
-                                             * (1 - prev - k * comp_d.sum()
-                                             - k * comp_a.sum()))
+#                                             * (self.treelets[dep].activation[t-1] + self.treelets[head].activation[t-1])# - self.act_threshold)
+                                                * (self.treelets[dep].activation[t-1] * self.treelets[head].activation[t-1])
+                                             * (1 - prev - k*comp_d.sum()
+                                             - k*comp_a.sum()))
                         self.links[dep][head][attch]['link_strength'][t] = curr
             
             # Next, treelet activations
@@ -229,23 +232,42 @@ class Lexicon(object):
             for tr in self.treelets:
                 prev = self.treelets[tr].activation[t-1]
                 # To calculate the average link activation
-                coef = 1. / (len(self.treelets[tr].daughters) + 1)
+#                coef = 1. / (len(self.treelets[tr].daughters) + 1)
                 # Calculate sum of all links attaching to a treelet
                 others = [x for x in self.treelets.keys() if x is not tr]
-                vals = []
+#                vals = []
+                vals1 = []
+                vals2 = []
                 for incoming in others:
                     # links with tr as dependent
                     if len(self.treelets[incoming].daughters) > 0:
                         for attch in self.links[tr][incoming]:
-                            vals.append(self.links[tr][incoming][attch]['link_strength'][t-1])
+#                            vals.append(self.links[tr][incoming][attch]['link_strength'][t-1])
+                            vals1.append(self.links[tr][incoming][attch]['link_strength'][t-1])
                     if len(self.treelets[tr].daughters) > 0:
                         daughters = [x for x in self.treelets[tr].daughters.keys()]
                         for d in daughters:
-                            vals.append(self.links[incoming][tr][d]['link_strength'][t-1])
-                vals = np.array(vals)
+#                            vals.append(self.links[incoming][tr][d]['link_strength'][t-1])
+                            vals2.append(self.links[incoming][tr][d]['link_strength'][t-1])
+#                vals = np.array(vals)
+                vals1 = np.array(vals1)
+                vals2 = np.array(vals2)
+                if len(vals1) >= 1:
+                    vals1 = vals1 / vals1.max()
+                if len(vals2) >= 1:
+                    vals2 = vals2 / vals2.max()
+                vals = np.append(vals1, vals2)
+                # Getting homophones for competition
+                others = [x for x in self.treelets.keys() if self.treelets[x].phon_form == self.treelets[tr].phon_form and x is not tr]
+                homophone_comp = []
+                for h in others:
+                    homophone_comp.append(self.treelets[h].activation[t-1])
+                homophone_comp = np.array(homophone_comp)
                 curr = prev + tau * ((-self.act_threshold 
-                                      + coef * vals.sum()) * prev
-                                     * (1 - prev))
+#                                      + coef * vals.sum()) * prev
+                                      + vals.prod()) * prev
+                                     * (1 - prev
+                                        - k * homophone_comp.sum()))
                 self.treelets[tr].activation[t] = curr
     
     def parse_sentence(self, sentence, interval):
@@ -260,7 +282,8 @@ class Lexicon(object):
 #                if ambig_list:
 #                    words.remove(word)
 #                    words.extend(ambig_list)
-        self.initialize_run(ntsteps=len(words) * interval + 10000, init_cond=0.02)
+#        self.initialize_run(ntsteps=len(words) * interval + 10000, init_cond=0.02)
+        self.initialize_run(ntsteps=len(words) * interval + 10000, init_cond=None)
         self.single_run(tau=0.01, k=2, boost=0.2, words=words, interval=interval)
         self.plot_traj()
     
@@ -293,4 +316,4 @@ if __name__ == '__main__':
 
     # Runs the model for the sentence 'the dog eats' with 400 time
     # steps between each word.
-    lex.parse_sentence('The dog eats', interval=400)
+    lex.parse_sentence('The dog eats', interval=500)
