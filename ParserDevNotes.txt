@@ -87,5 +87,8 @@ Notes on 24.03.:
 12.06. Multiplying treelet activations in the link dyn. seems to have a positive benefit! Also added features in lexicon for cat and dog. Also changed to uniform init. cond. instead of random.
 	Next, adding in competition from homophonous words. Ok, that works for getting the right verb to win (WTA) (intrans. in this test case), but it takes a long time.
 	Added more nouns (with new features for each). The right parse is winning, but the link strength between the subject noun and the verb is submaximal. This seems to be due to other links to the intrans. verb and the trans. version not having their initial symmetries broken, so they stay at around 0.1.
-	
+
+13.06. Tried out transitive sentence. Intrans verb still won. The reason, I think, is this: treelet activation currently depends on avg. link strength over all links on a treelet. The intransitive treelet will have a higher avg. link strength after the subject NP b/c it only has two attachment sites, both of which can be relatively strong. The transitive treelet, on the other hand, must have a lower avg. link strength b/c it has more links to bring the average down.
+	Whatever the solution to this is, it's probably also the solution to making unused treelets go to 0. We need trans. and intrans. to be equally viable until DO comes in, at which point, trans. should be at an advantage.
+	With just 'sleeps' added, 'eats_intrans's links win.						
 	

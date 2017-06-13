@@ -1,51 +1,57 @@
 # Trying out YAML for inputing words to the lexicon of the parser
-# feature vector dimensions: det, n, v, cat, dog, thing, rooster
+# feature vector dimensions: det, n, v, cat, dog, thing, rooster, eats, sleeps, falls
 the:
     phon_form: the
-    mother_feat: [1, 0, 0, 0, 0, 0, 0]
+    mother_feat: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     daughters: null
 
 dog:
     phon_form: dog
-    mother_feat: [0, 1, 0, 0, 1, 0, 0]
+    mother_feat: [0, 1, 0, 0, 1, 0, 0, 0, 0, 0]
     daughters:
-        Det: [1, 0, 0, 0, 0, 0, 0]
+        Det: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 #        Adj: [0, 1, 1, 0]
 
 cat:
     phon_form: cat
-    mother_feat: [0, 1, 0, 1, 0, 0, 0]
+    mother_feat: [0, 1, 0, 1, 0, 0, 0, 0, 0, 0]
     daughters:
-        Det: [1, 0, 0, 0, 0, 0, 0]
+        Det: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 #        Adj: [0, 1, 1, 0]
 
 thing:
     phon_form: thing
-    mother_feat: [0, 1, 0, 0, 0, 1, 0]
+    mother_feat: [0, 1, 0, 0, 0, 1, 0, 0, 0, 0]
     daughters:
-        Det: [1, 0, 0, 0, 0, 0, 0]
+        Det: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         
 rooster:
     phon_form: rooster
-    mother_feat: [0, 1, 0, 0, 0, 0, 1]
+    mother_feat: [0, 1, 0, 0, 0, 0, 1, 0, 0, 0]
     daughters:
-        Det: [1, 0, 0, 0, 0, 0, 0]
+        Det: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 eats_intrans:
     phon_form: eats
-    mother_feat: [0, 0, 1, 0, 0, 0, 0]
+    mother_feat: [0, 0, 1, 0, 0, 0, 0, 1, 0, 0]
     daughters:
-        Subj: [0, 1, 0, 0.5, 0.5, 0.5, 0.5]
+        Subj: [0, 1, 0, 0.5, 0.5, 0.5, 0.5, 0, 0, 0]
 
 eats_trans:
     phon_form: eats
-    mother_feat: [0, 0, 1, 0, 0, 0, 0]
+    mother_feat: [0, 0, 1, 0, 0, 0, 0, 1, 0, 0]
     daughters:
-        Subj: [0, 1, 0, 0.5, 0.5, 0.5, 0.5]
-        DO: [0, 1, 0, 0.5, 0.5, 0.5, 0.5]
+        Subj: [0, 1, 0, 0.5, 0.5, 0.5, 0.5, 0, 0, 0]
+        DO: [0, 1, 0, 0.5, 0.5, 0.5, 0.5, 0, 0, 0]
 
-#yellow:
-#    phon_form: yellow
-#    mother_feat: [0.1, 0.9, 0.9, 0]
+sleeps:
+    phon_form: sleeps
+    mother_feat: [0, 0, 1, 0, 0, 0, 0, 0, 1, 0]
+    daughters:
+        Subj: [0, 1, 0, 0.5, 0.5, 0.5, 0.5, 0, 0, 0]
+
+#falls:
+#    phon_form: falls
+#    mother_feat: [0, 0, 1, 0, 0, 0, 0, 0, 0, 1]
 #    daughters:
-#        Adv: [0, 0.5, 0.5, 1]
+#        Subj: [0, 1, 0, 0.5, 0.5, 0.5, 0.5, 0, 0, 0]

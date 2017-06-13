@@ -87,7 +87,7 @@ class Lexicon(object):
         self.nlinks = len(self.treelets)
         self.initialized = False
         self.ntsteps = 0
-        self.act_threshold = 0.85
+        self.act_threshold = 0.1
         
     def add_treelet(self, *args):
         """Function for adding a new treelet to the lexicon. Checks if the
@@ -217,7 +217,7 @@ class Lexicon(object):
                         f = self.links[dep][head][attch]['feature_match']
                         curr = prev + tau * (prev * f
 #                                             * (self.treelets[dep].activation[t-1] + self.treelets[head].activation[t-1])# - self.act_threshold)
-                                                * (self.treelets[dep].activation[t-1] * self.treelets[head].activation[t-1])
+                                             * (self.treelets[dep].activation[t-1] * self.treelets[head].activation[t-1])
                                              * (1 - prev - k*comp_d.sum()
                                              - k*comp_a.sum()))
                         self.links[dep][head][attch]['link_strength'][t] = curr
@@ -232,31 +232,34 @@ class Lexicon(object):
             for tr in self.treelets:
                 prev = self.treelets[tr].activation[t-1]
                 # To calculate the average link activation
-#                coef = 1. / (len(self.treelets[tr].daughters) + 1)
+                coef = 1. / (len(self.treelets[tr].daughters) + 1)
                 # Calculate sum of all links attaching to a treelet
                 others = [x for x in self.treelets.keys() if x is not tr]
-#                vals = []
-                vals1 = []
-                vals2 = []
+                vals = []
+#                vals1 = []
+#                vals2 = []
                 for incoming in others:
                     # links with tr as dependent
                     if len(self.treelets[incoming].daughters) > 0:
                         for attch in self.links[tr][incoming]:
-#                            vals.append(self.links[tr][incoming][attch]['link_strength'][t-1])
-                            vals1.append(self.links[tr][incoming][attch]['link_strength'][t-1])
+                            vals.append(self.links[tr][incoming][attch]['link_strength'][t-1])
+#                            vals1.append(self.links[tr][incoming][attch]['link_strength'][t-1])
+#                    vals1 = max(vals1) - 0.1
                     if len(self.treelets[tr].daughters) > 0:
                         daughters = [x for x in self.treelets[tr].daughters.keys()]
                         for d in daughters:
-#                            vals.append(self.links[incoming][tr][d]['link_strength'][t-1])
-                            vals2.append(self.links[incoming][tr][d]['link_strength'][t-1])
-#                vals = np.array(vals)
-                vals1 = np.array(vals1)
-                vals2 = np.array(vals2)
-                if len(vals1) >= 1:
-                    vals1 = vals1 / vals1.max()
-                if len(vals2) >= 1:
-                    vals2 = vals2 / vals2.max()
-                vals = np.append(vals1, vals2)
+                            vals.append(self.links[incoming][tr][d]['link_strength'][t-1])
+#                            vals2.append(self.links[incoming][tr][d]['link_strength'][t-1])
+#                    vals2 = max(vals2) - 0.1
+                vals = np.array(vals)
+#                vals1 = np.array(vals1)
+#                vals2 = np.array(vals2)
+#                if len(vals1) >= 1:
+#                    vals1 = vals1 / vals1.max()
+#                if len(vals2) >= 1:
+#                    vals2 = vals2 / vals2.max()
+#                vals = np.append(vals1, vals2)
+#                vals[vals <= 0] = 0
                 # Getting homophones for competition
                 others = [x for x in self.treelets.keys() if self.treelets[x].phon_form == self.treelets[tr].phon_form and x is not tr]
                 homophone_comp = []
@@ -264,8 +267,8 @@ class Lexicon(object):
                     homophone_comp.append(self.treelets[h].activation[t-1])
                 homophone_comp = np.array(homophone_comp)
                 curr = prev + tau * ((-self.act_threshold 
-#                                      + coef * vals.sum()) * prev
-                                      + vals.prod()) * prev
+                                      + coef * vals.sum()) * prev
+#                                      + vals.sum()) * prev
                                      * (1 - prev
                                         - k * homophone_comp.sum()))
                 self.treelets[tr].activation[t] = curr
@@ -275,13 +278,6 @@ class Lexicon(object):
         lexicon, runs the dynamics, and plots the trajectories.
         """
         words = sentence.lower().split(sep=' ')
-#        lex_words = list(self.treelets.keys())
-#        for word in words:
-#            if word not in lex_words:
-#                ambig_list = [x for x in lex_words if x.startswith(word)]
-#                if ambig_list:
-#                    words.remove(word)
-#                    words.extend(ambig_list)
 #        self.initialize_run(ntsteps=len(words) * interval + 10000, init_cond=0.02)
         self.initialize_run(ntsteps=len(words) * interval + 10000, init_cond=None)
         self.single_run(tau=0.01, k=2, boost=0.2, words=words, interval=interval)
@@ -291,7 +287,7 @@ class Lexicon(object):
         for dep in self.links:
             for head in self.links[dep]:
                 for attch in self.links[dep][head]:
-                    if self.links[dep][head][attch]['link_strength'][-1] > 0.0:
+                    if self.links[dep][head][attch]['link_strength'][-1] > 0.1:
                         plt.plot(self.links[dep][head][attch]['link_strength'],
                              label = '{}-{}-{}'.format(dep, head, attch))
         plt.legend(bbox_to_anchor = (1.05, 1))
@@ -316,4 +312,6 @@ if __name__ == '__main__':
 
     # Runs the model for the sentence 'the dog eats' with 400 time
     # steps between each word.
-    lex.parse_sentence('The dog eats', interval=500)
+#    lex.parse_sentence('The cat eats rooster', interval=500)
+    lex.parse_sentence('The dog sleeps', interval=400)
+#    lex.parse_sentence('the', interval=400)
