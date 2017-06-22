@@ -62,7 +62,7 @@ clip = 0.1
 #fv_noise = np.zeros(fv.shape)
 
 ipt = np.zeros((ntsteps-1, nfeatures))
-nruns = 100
+nruns = 10
 corr_parse = np.array([1, 0, 1, 1, 0])
 agr_attr = np.array([1, 0, 1, 1, 1])
 corr_no_boat = np.array([1, 0, 1, 0, 0])

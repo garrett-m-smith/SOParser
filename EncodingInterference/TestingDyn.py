@@ -52,14 +52,14 @@ sys_alt = Matrix([(canoe[0]*cf0 + canoe[1]*cf1) * cx * (1 - cx - 2*cy),
 
 # analysis of fixed points
 # Agr. Attr. is a fp
-sys_c.subs({cx:1, cy:0, cz:1, cf0:1, cf1:1})
-sys_s.subs({sx:1, sy:0, sz:1, sf0:1, sf1:1})
+sys_c.subs({cx:1, cy:0, cz:1, cf0:1, cf1:0})
+sys_s.subs({sx:1, sy:0, sz:1, sf0:1, sf1:0})
 sys_alt.subs({cx:1, cy:0, cz:1, cf0:1, cf1:1})
 
 jac_c = sys_c.jacobian([cx, cy, cz, cf0, cf1])
-eigs_c = jac_c.subs({cx:1, cy:0, cz:1, cf0:1, cf1:1}).eigenvects()
+eigs_c = jac_c.subs({cx:1, cy:0, cz:1, cf0:1, cf1:0}).eigenvects()
 jac_s = sys_s.jacobian([sx, sy, sz, sf0, sf1])
-eigs_s = jac_s.subs({sx:1, sy:0, sz:1, sf0:1, sf1:1}).eigenvects()
+eigs_s = jac_s.subs({sx:1, sy:0, sz:1, sf0:1, sf1:0}).eigenvects()
 jac_alt = sys_alt.jacobian([cx, cy, cz, cf0, cf1])
 eigs_alt = jac_alt.subs({cx:1, cy:0, cz:1, cf0:1, cf1:1}).eigenvects()
 
