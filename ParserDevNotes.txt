@@ -92,3 +92,10 @@ Notes on 24.03.:
 	Whatever the solution to this is, it's probably also the solution to making unused treelets go to 0. We need trans. and intrans. to be equally viable until DO comes in, at which point, trans. should be at an advantage.
 	With just 'sleeps' added, 'eats_intrans's links win.						
 	
+20.06. Ideas for future refactoring of "full" model code: have treelet class inherit from dict. Use idiomatic Python on page 16 of Think Complexity. Could clean up code and potentially speed it up, too.
+
+21.06. Goal: figure out why 'cabins' is producing more agreement attraction than 'sailboats'. Herangehensweise: looking at eigenvals (1/characteristic time scale) for both systems to see if 'sailboats' approaches its fixed point faster, preventing it from influencing verb features.
+	Ok, it looks like 'sailboats' has a larger absolute eigenvalue in one eigendirection. B/c 'cabins' is slower, it seems it's more susceptible to noise than the other. First attempt at fixing: making 'cabins' and 'sailboats' have same feature overlap with the NPmod.
+	Not sure if that worked. Need to double check each step in the implementation and do longer MC runs.
+	Longer MC runs show same results: more agr. attr. and no-boat in 'cabins'...
+	The problem seems to be this: increasing feature match has the effect of speeding up the dynamics, making the system less susceptible to noise. Thus, 'sailboats' will not get more Agr. Attr. b/c it gets away from the separatrix faster than 'cabins.' Not sure what to do, but I need sleep.
