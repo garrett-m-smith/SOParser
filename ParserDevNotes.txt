@@ -99,3 +99,7 @@ Notes on 24.03.:
 	Not sure if that worked. Need to double check each step in the implementation and do longer MC runs.
 	Longer MC runs show same results: more agr. attr. and no-boat in 'cabins'...
 	The problem seems to be this: increasing feature match has the effect of speeding up the dynamics, making the system less susceptible to noise. Thus, 'sailboats' will not get more Agr. Attr. b/c it gets away from the separatrix faster than 'cabins.' Not sure what to do, but I need sleep.
+
+25.06. Ok, getting closer. I think I've figured out what the issue is: the features start out at [0.5, 0.5], right at the separatrix in that space. The forces acting on them are very small initially, though (close to 0.0), so the features take a long time to get away from the separatrix. This means that the noise has approximately equal chances of bumping the features around for both 'cabins' and 'sailboats.'
+	I FUCKING WORKS!!!!!
+

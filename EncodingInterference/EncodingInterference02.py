@@ -48,7 +48,7 @@ noise_mag = 0.0
 clip = 0.1
 
 data = np.zeros((3, nsents))
-nrep = 1
+nrep = 10
 
 m = np.zeros((ntsteps-1, 3))
 
