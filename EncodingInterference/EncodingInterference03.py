@@ -13,7 +13,6 @@ Created on Thu Jun 22 15:52:30 2017
 @author: garrettsmith
 """
 
-#from scipy.integrate import odeint
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -26,49 +25,59 @@ nfeat = 2
 def cos_sim(v1, v2):
     return (v1 @ v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
 
+# Competition parameter
 k = 1.0
+# Interaction matrix
 W = np.array([[1, k, 0],
               [k, 1, k],
               [0, k, 1]])
 
-# Canoe
+# Canoe mother features
 canoe = np.array([1, 0])
-# Cabins
+# Cabins mother features
 cabins = np.array([0, 1])
-# Sailboats
+# Sailboats mother features
 sailboats = np.array([1, 1])
 n2s = [cabins, sailboats]
-# NPmod
+# NPmod features
 npmod = np.array([0.5]*2)
 
+# The equations
 def dyn(x, n2):
+    """Takes a vector of link strengths and verb feature values and returns
+    the same after updating according to the equations for the system."""
+    # Separating the input vector into links and features
     l = x[0:3]
     f = x[3:]
+    # Calculating the feature match
     m = [cos_sim(canoe, f), cos_sim(n2, f), cos_sim(n2, npmod)]
     dl = np.clip(m * l * (1 - W @ l) 
                  + np.random.normal(0, 0.1, size=l.size), -0.1, 1.1)
-#    net = (f - 0.5 + 0.001*(l[0]*cabins + l[1]*n2)
-#            + np.random.normal(0, 0.1, size=f.size))
-    net = 0.45*(l[0]*cabins + l[1]*n2) - f
+    net = f - 0.5 + 0.01 * (l[0]*(2*canoe-1) + l[1]*(2*n2-1))
+    # Note the difference in noise magnitues between links and features
     df = np.clip(f * (1 - f) * net 
-                 + np.random.normal(0, 0.1, size=f.size), -0.1, 1.1)
-#    df = np.clip(f * (1 - f) * net, -0.1, 1.1)
+                 + np.random.normal(0, 0.01, size=f.size), -0.1, 1.1)
     return np.concatenate((dl, df))
 
-tvec = np.linspace(0, 40, 100)
+# Initial conditions
 #x0 = np.array([0.001]*3)
 #x0 = np.array([0.01, 0.005, 0.005])
 #x0 = np.array([0.001]*5)
 #x0 = np.array([0.001, 0.001, 0.001, 0.51, 0.49])
-x0 = np.array([0.1, 0.001, 0.001, 0.5, 0.5])
+x0 = np.array([0.01, 0.001, 0.001, 0.5, 0.5])
 
+# Time constant and length of integration
 tau = 0.01
 ntsteps = 2000
 x = np.zeros((ntsteps, nfeat+nlinks))
 x[0,:] = x0
+
+# For plotting if nruns == 1 
 lines = ['-', '--']
 nruns = 1
+# To save the results
 data = np.zeros((3, 2))
+
 for sent in range(len(n2s)):
     print('Starting sentence {}'.format(sent))
     n2 = n2s[sent]
@@ -78,9 +87,11 @@ for sent in range(len(n2s)):
             print('Run {}'.format(run))
         for t in range(1, ntsteps):
             x[t,:] = x[t-1,:] + tau * dyn(x[t-1,:], n2)
-            if t == 20:
-                x[t,1:3] += 0.1
+            # Boost the links from N2 to the verb and NPmod
+            if t == 250:
+                x[t,1:3] += 0.01
     
+        # Plotting individual runs
         if nruns == 1:
             plt.figure(1)
             for i in range(nlinks):
@@ -103,7 +114,7 @@ for sent in range(len(n2s)):
             data[0,sent] += 1
         elif final[-1] == 1:
             data[1,sent] += 1
-        else:
+        elif final[1] != 0:
             data[2,sent] += 1
 
 print('Singular agreement: {}\nPlural agreement: {}\nOther: {}'.format(*data))
