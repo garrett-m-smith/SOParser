@@ -24,11 +24,13 @@ link_names = ['N1-Verb', 'N1-of', 'of-N1', 'of-N2', 'N2-of', 'N2-V']
 box_of_N2 = np.array([0.9, 0.3, 0.9, 0.9, 0.9, 0.9])
 group_of_N2 = np.array([0.6, 0.6, 0.6, 0.9, 0.9, 0.9])
 lot_of_N2 = np.array([0.3, 0.9, 0.3, 0.9, 0.9, 0.9])
+many_N2 = np.array([0, 0, 0, 0.9, 0., 0.9])
 
 # Uncomment the one you want to try
-ipt = box_of_N2 # Container
+#ipt = box_of_N2 # Container
 #ipt = group_of_N2 # Collection
 #ipt = lot_of_N2 # Measure Phrase
+ipt = many_N2
 
 tau = 0.01
 ntsteps = 10000
@@ -38,7 +40,7 @@ ntsteps = 10000
 #adj = 2.
 
 x0 = np.array([0.001] * nlinks)
-adj = 2.
+#adj = 2.
 
 # Setting first word to between its current state and 1
 #x0[0] = x0[0] + (1 - x0[0]) / adj
@@ -54,7 +56,7 @@ noise = np.random.normal(0, noisemag, xhist.shape)
 
 # Length manipulation
 length = 0
-# length = 1
+#length = 1
 
 if length == 0:
     # Half the boost if short
@@ -62,24 +64,27 @@ if length == 0:
 else:
     adj = 0.1
     
-# N1 Type manipulation
-#ipt = box_of_N2
-ipt = group_of_N2
-#ipt = lot_of_N2
+if ipt is many_N2:
+    x0 = np.array([0, 0, 0, 0.10, 0.001, 0.001])
 
 # Individual runs
 for t in range(1, ntsteps):
-                # Euler forward dynamics
-                xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
-                * (ipt - W @ (ipt * xhist[t-1,])) + noise[t,:]), -0.1, 1.1)
-#                xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
-#                * (ipt - W @ (ipt * xhist[t-1,]) + noise[t,:])), -0.1, 1.1)
+    # Euler forward dynamics
+    xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
+    * (ipt - W @ (ipt * xhist[t-1,])) + noise[t,:]), -0.1, 1.1)
+#    xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
+#      * (ipt - W @ (ipt * xhist[t-1,]) + noise[t,:])), -0.1, 1.1)
     
-                if t == 25:
-                    xhist[t,2] += adj
-                    xhist[t,1] += adj
-                if t == 50:
-                    xhist[t,3:] += adj
+    if ipt is not many_N2:   
+        if t == 25:
+            xhist[t,2] += adj
+            xhist[t,1] += adj
+        if t == 50:
+            xhist[t,3:] += adj
+    else:
+        xhist[t,0:3] = np.clip(0 + tau*noise[t,0:3], -0.1, 1.1)
+        if t == 25:
+            xhist[t,4:] += adj
 
 
 # If you want to save individual trajectories as CSVs
