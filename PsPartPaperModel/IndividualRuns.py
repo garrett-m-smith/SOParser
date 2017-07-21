@@ -7,11 +7,11 @@ Created on Tue Mar 28 17:57:40 2017
 
 import numpy as np
 import matplotlib.pyplot as plt
-#from sklearn.preprocessing import minmax_scale
+#from sklearn.preprocessing import normalize
 
 nlinks = 6
-#k = 2
-k = 1.1
+k = 2
+#k = 1.1
 W = np.array([[1, k, 0, k, 0, k],
               [k, 1, k, 0, k, 0],
               [0, k, 1, k, 0, k],
@@ -34,22 +34,28 @@ link_names = ['N1-Verb', 'N1-of', 'of-N1', 'of-N2', 'N2-of', 'N2-V']
 #many_N2 = np.array([0., 0, 0, 3, 0, 3])
 
 # Manhattan distances
+#box_of_N2 = np.array([0., 3, 0, 3, 0, 0])
+#group_of_N2 = np.array([2., 2, 2, 2, 0, 0])
+#lot_of_N2 = np.array([3., 0, 3, 0, 0, 0])
+#many_N2 = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
+
 box_of_N2 = np.array([0., 3, 0, 3, 0, 0])
-group_of_N2 = np.array([2., 2, 2, 2, 0, 0])
-lot_of_N2 = np.array([3., 0, 3, 0, 0, 0])
+group_of_N2 = np.array([2., 2, 2, 2, 2, 0])
+lot_of_N2 = np.array([3., 0, 3, 0, 3, 0])
 many_N2 = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
 
 all_sents = [box_of_N2, group_of_N2, lot_of_N2, many_N2]
 # Similarity
+#all_sents = normalize(np.exp(-np.array(all_sents)), norm='l2', axis=1)
 all_sents = np.exp(-np.array(all_sents))
 
 # Uncomment the one you want to try
 #ipt = all_sents[0,] + np.random.uniform(0, 0.001, nlinks) # Container
-#ipt = all_sents[1,] + np.random.uniform(0, 0.001, nlinks) # Collection
+ipt = all_sents[1,] + np.random.uniform(0, 0.001, nlinks) # Collection
 #ipt = all_sents[2,] + np.random.uniform(0, 0.001, nlinks) # Measure
-all_sents[3,3] += np.random.uniform(0, 0.001, 1)
-all_sents[3,5] += np.random.uniform(0, 0.001, 1)
-ipt = all_sents[3,] # Quant
+#all_sents[3,3] -= np.random.uniform(0, 0.001, 1)
+#all_sents[3,5] -= np.random.uniform(0, 0.001, 1)
+#ipt = all_sents[3,] # Quant
 
 #tau = 1.
 tau = 0.01
@@ -57,8 +63,8 @@ ntsteps = 10000
 noisemag = 0.001
 nreps = 100
 
-length = 0
-#length = 1
+#length = 0
+length = 1
 if length == 0:
     adj = 0.05
 else:
@@ -75,7 +81,10 @@ xhist[0,] = x0
 noise = np.sqrt(tau*noisemag) * np.random.normal(0, 1, xhist.shape)
 
 # Individual runs
-for t in range(1, ntsteps):
+#for t in range(1, ntsteps):
+t = 0
+while True:
+    t += 1
     # Euler forward dynamics
 #                xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
 #                * (ipt - W @ (ipt * xhist[t-1,])) + noise[t,:]), -0.1, 1.1)
@@ -95,6 +104,12 @@ for t in range(1, ntsteps):
         xhist[t,4] = np.clip(noise[t,4], -0.01, 1.01)
         if t == 400:
             xhist[t,5] += adj
+    if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
+        break
+    elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
+        break
+    elif t == ntsteps:
+        break
 
 
 # If you want to save individual trajectories as CSVs
