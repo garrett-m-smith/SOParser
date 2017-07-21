@@ -7,6 +7,7 @@ Created on Tue Mar 28 17:57:40 2017
 
 import numpy as np
 import matplotlib.pyplot as plt
+#from sklearn.preprocessing import minmax_scale
 
 nlinks = 6
 #k = 2
@@ -20,71 +21,80 @@ W = np.array([[1, k, 0, k, 0, k],
 
 link_names = ['N1-Verb', 'N1-of', 'of-N1', 'of-N2', 'N2-of', 'N2-V']
 
-# Params from CUNY 2017
-box_of_N2 = np.array([0.9, 0.3, 0.9, 0.9, 0.9, 0.9])
-group_of_N2 = np.array([0.6, 0.6, 0.6, 0.9, 0.9, 0.9])
-lot_of_N2 = np.array([0.3, 0.9, 0.3, 0.9, 0.9, 0.9])
-many_N2 = np.array([0, 0, 0, 0.9, 0., 0.9])
+# Params from CUNY 2017: made up
+#box_of_N2 = np.array([0.9, 0.3, 0.9, 0.9, 0.9, 0.9])
+#group_of_N2 = np.array([0.6, 0.6, 0.6, 0.9, 0.9, 0.9])
+#lot_of_N2 = np.array([0.3, 0.9, 0.3, 0.9, 0.9, 0.9])
+#many_N2 = np.array([0, 0, 0, 0.9, 0., 0.9])
+
+# Feature matches
+#box_of_N2 = np.array([3., 0, 3, 0, 3, 3])
+#group_of_N2 = np.array([1., 1, 1, 1, 3, 3])
+#lot_of_N2 = np.array([0., 3, 0, 3, 3, 3])
+#many_N2 = np.array([0., 0, 0, 3, 0, 3])
+
+# Manhattan distances
+box_of_N2 = np.array([0., 3, 0, 3, 0, 0])
+group_of_N2 = np.array([2., 2, 2, 2, 0, 0])
+lot_of_N2 = np.array([3., 0, 3, 0, 0, 0])
+many_N2 = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
+
+all_sents = [box_of_N2, group_of_N2, lot_of_N2, many_N2]
+# Similarity
+all_sents = np.exp(-np.array(all_sents))
 
 # Uncomment the one you want to try
-#ipt = box_of_N2 # Container
-#ipt = group_of_N2 # Collection
-#ipt = lot_of_N2 # Measure Phrase
-ipt = many_N2
+#ipt = all_sents[0,] + np.random.uniform(0, 0.001, nlinks) # Container
+#ipt = all_sents[1,] + np.random.uniform(0, 0.001, nlinks) # Collection
+#ipt = all_sents[2,] + np.random.uniform(0, 0.001, nlinks) # Measure
+all_sents[3,3] += np.random.uniform(0, 0.001, 1)
+all_sents[3,5] += np.random.uniform(0, 0.001, 1)
+ipt = all_sents[3,] # Quant
 
+#tau = 1.
 tau = 0.01
 ntsteps = 10000
-#nsec = 50
-#tvec = np.linspace(0, nsec, nsec/tau + 1)
-#x0 = np.array([0.2] * nlinks)
-#adj = 2.
+noisemag = 0.001
+nreps = 100
 
-x0 = np.array([0.001] * nlinks)
-#adj = 2.
-
-# Setting first word to between its current state and 1
-#x0[0] = x0[0] + (1 - x0[0]) / adj
-#x0[0] = 0.01
-x0[0] = 0.1
-  
-# Creating history fector and initializing noise
-xhist = np.zeros((ntsteps, nlinks))
-xhist[0,] = x0
-#noisemag = 1.
-noisemag = 0.5
-noise = np.random.normal(0, noisemag, xhist.shape)
-
-# Length manipulation
 length = 0
 #length = 1
-
 if length == 0:
-    # Half the boost if short
     adj = 0.05
 else:
     adj = 0.1
     
 if ipt is many_N2:
-    x0 = np.array([0, 0, 0, 0.10, 0.001, 0.001])
+    x0 = np.array([0, 0, 0, 0.101, 0., 0.001])
+else:
+    x0 = np.array([0.001]*nlinks)
+    x0[0] += 0.1
+    
+xhist = np.zeros((ntsteps, nlinks))
+xhist[0,] = x0
+noise = np.sqrt(tau*noisemag) * np.random.normal(0, 1, xhist.shape)
 
 # Individual runs
 for t in range(1, ntsteps):
     # Euler forward dynamics
-    xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
-    * (ipt - W @ (ipt * xhist[t-1,])) + noise[t,:]), -0.1, 1.1)
+#                xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
+#                * (ipt - W @ (ipt * xhist[t-1,])) + noise[t,:]), -0.1, 1.1)
 #    xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
-#      * (ipt - W @ (ipt * xhist[t-1,]) + noise[t,:])), -0.1, 1.1)
-    
-    if ipt is not many_N2:   
-        if t == 25:
-            xhist[t,2] += adj
+#    * (ipt - W @ (ipt * xhist[t-1,]))) + noise[t,:], -0.01, 1.01)
+    xhist[t,:] = np.clip(xhist[t-1,] + tau * (ipt * xhist[t-1,] 
+    * (1 - W @ xhist[t-1,])) + noise[t,:], -0.01, 1.01)
+
+    if not np.all(ipt == all_sents[3,]):
+        if t == 400:
             xhist[t,1] += adj
-        if t == 50:
+            xhist[t,2] += adj
+        if t == 800:
             xhist[t,3:] += adj
     else:
-        xhist[t,0:3] = np.clip(0 + tau*noise[t,0:3], -0.1, 1.1)
-        if t == 25:
-            xhist[t,4:] += adj
+        xhist[t,0:3] = np.clip(noise[t,0:3], -0.1, 1.1)
+        xhist[t,4] = np.clip(noise[t,4], -0.01, 1.01)
+        if t == 400:
+            xhist[t,5] += adj
 
 
 # If you want to save individual trajectories as CSVs
