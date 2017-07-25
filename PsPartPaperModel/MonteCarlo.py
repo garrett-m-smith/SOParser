@@ -39,12 +39,23 @@ pp = ['-PP', '+PP']
 #lot_of_N2 = np.array([3., 0, 3, 0, 3, 0])
 #many_N2 = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
 
-box_of_N2 = np.array([0., 1, 1, 1, 1, 0])
-group_of_N2 = np.array([2., 1, 1, 1, 1, 0])
-lot_of_N2 = np.array([3., 1, 1, 1, 1, 0])
-many_N2 = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
+#box_of_N2 = np.array([0., 1, 1, 1, 1, 0])
+#group_of_N2 = np.array([2., 1, 1, 1, 1, 0])
+#lot_of_N2 = np.array([3., 1, 1, 1, 1, 0])
+#many_N2 = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
 
-all_sents = [box_of_N2, group_of_N2, lot_of_N2, many_N2]
+box_of_N2_pp = np.array([0., 2, 2, 2, 2, 0])
+group_of_N2_pp = np.array([1., 2, 2, 2, 2, 0])
+lot_of_N2_pp = np.array([3., 2, 2, 2, 2, 0])
+many_N2_pp = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
+
+box_of_N2_no = np.array([0., 2, 2, 2, 2, 1])
+group_of_N2_no = np.array([1., 2, 2, 2, 2, 1])
+lot_of_N2_no = np.array([3., 2, 2, 2, 2, 1])
+many_N2_no = np.array([np.inf, np.inf, np.inf, 0, np.inf, 1])
+
+all_sents = [box_of_N2_pp, group_of_N2_pp, lot_of_N2_pp, many_N2_pp, box_of_N2_no, group_of_N2_no, lot_of_N2_no, many_N2_no]
+#all_sents = np.array(all_sents)
 # Similarity
 #all_sents = normalize(np.exp(-np.array(all_sents)), norm='l2', axis=1)
 all_sents = np.exp(-np.array(all_sents))
@@ -53,7 +64,7 @@ all_sents = np.exp(-np.array(all_sents))
 # parameter k determines the relative strength of inhibition from other links
 # to a link's self-inhibition
 k = 2.
-#k = 1.1
+#k = 2.15
 W = np.array([[1, k, 0, k, 0, k],
               [k, 1, k, 0, k, 0],
               [0, k, 1, k, 0, k],
@@ -66,113 +77,120 @@ tau = 0.01
 #tau = 1.
 ntsteps = 10000
 noisemag = 0.001
-nreps = 500
+nreps = 100
+adj = 0.1
+#adj0 = 0.009625
 
 # For saving final states; dims: length, N1 Type, parse type(N1, N2, other)
-data = np.zeros((len(pp), len(all_sents), 3))
+data = np.zeros((len(all_sents), 3))
 
-for length in range(len(pp)):
-    if length == 0:
-        print('Starting -PP')
-        # Half the boost if short
+#for length in range(len(pp)):
+#    if length == 0:
+#        print('Starting -PP')
+#         Half the boost if short
 #        adj = 0.05
-        adj = 0.001
-    else:
-        print('Starting +PP')
+#        adj = adj0/2.
+#        adj = 0.0
+#    else:
+#        print('Starting +PP')
 #        adj = 0.1
-        adj = 0.01
+#        adj = adj0
         
-    for sent in range(all_sents.shape[0]):
-        # Set current input
-        ipt = all_sents[sent,]
-        print('\tStarting sentence {}'.format(sent))
+for sent in range(all_sents.shape[0]):
+    # Set current input
+    ipt = all_sents[sent,]
+    print('\tStarting sentence {}'.format(sent))
     
-        for rep in range(nreps):
+    for rep in range(nreps):
         # For each repetition, reset history and noise
-            if sent == 3:
-                # Minus to keep < 1
-                all_sents[3,3] -= np.random.uniform(0, 0.001, 1)
-                all_sents[3,5] -= np.random.uniform(0, 0.001, 1)
-                ipt = all_sents[3,]
-#                x0 = np.array([0, 0, 0, 0.101, 0., 0.001])
-                x0 = np.array([0, 0, 0, 0.011, 0., 0.001])
-            else:
-                ipt = all_sents[sent,] + np.random.uniform(0, 0.001, nlinks)
-                x0 = np.array([0.001]*nlinks)
-#                x0[0] += 0.1
-                x0[0] += 0.01
-            xhist = np.zeros((ntsteps, nlinks))
-            xhist[0,] = x0
-            noise = np.sqrt(tau*noisemag) * np.random.normal(0, 1, xhist.shape)
+        if sent == 3:
+            # Minus to keep < 1
+#            all_sents[3,3] -= np.random.uniform(0, 0.001, 1)
+#            all_sents[3,5] -= np.random.uniform(0, 0.001, 1)
+            ipt = all_sents[3,]
+            x0 = np.array([0, 0, 0, 0.101, 0., 0.001])
+#               x0 = np.array([0, 0, 0, 0.011, 0., 0.001])
+        else:
+            ipt = all_sents[sent,] #+ np.random.uniform(0, 0.001, nlinks)
+            x0 = np.array([0.001]*nlinks)
+            x0[0] += 0.1
+#               x0[0] += 0.01
+        xhist = np.zeros((ntsteps, nlinks))
+        xhist[0,] = x0
+        noise = np.sqrt(tau*noisemag) * np.random.normal(0, 1, xhist.shape)
             
-            t = 0
-            while True:
-                t += 1
+        t = 0
+#        while True:
+        while t < ntsteps-1:
+            t += 1
 #            for t in range(1, ntsteps):
                 # Euler forward dynamics
 #                xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
 #                * (ipt - W @ (ipt * xhist[t-1,]))) + noise[t,:], -0.01, 1.01)
-                xhist[t,:] = np.clip(xhist[t-1,] + tau * (ipt * xhist[t-1,] 
-                * (1 - W @ xhist[t-1,])) + noise[t,:], -0.01, 1.01)
+            xhist[t,:] = np.clip(xhist[t-1,] + tau * (ipt * xhist[t-1,] 
+            * (1 - W @ xhist[t-1,])) + noise[t-1,:], -0.01, 1.01)
 
-                if sent != 3:
-                    if t == 400:
-                        xhist[t,1] += adj
-                        xhist[t,2] += adj
-                    if t == 800:
-                        xhist[t,3:] += adj
-                    if t >= 1200:
-                        if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
-                            data[length, sent, 0] += 1
-                            break
-                        elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
-                            data[length, sent, 1] += 1
-                            break
-                        elif (t+1) == ntsteps:
-                            data[length, sent, 2] += 1
-                            break
-                else:
-                    xhist[t,0:3] = np.clip(noise[t,0:3], -0.1, 1.1)
-                    xhist[t,4] = np.clip(noise[t,4], -0.01, 1.01)
-                    if t == 400:
-                        xhist[t,5] += adj
-                
-                    if t >= 800:
-                        if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
-                            data[length, sent, 0] += 1
-                            break
-                        elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
-                            data[length, sent, 1] += 1
-                            break
-                        elif (t+1) == ntsteps:
-                            data[length, sent, 2] += 1
-                            break
+            if sent != 3:
+                if t == 400:
+                    xhist[t,1] += adj
+                    xhist[t,2] += adj
+                if t == 800:
+                    xhist[t,3:] += adj
+#                if t >= 1200:
+#                    if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
+#                        data[sent, 0] += 1
+#                        break
+#                    elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
+#                        data[sent, 1] += 1
+#                        break
+#                    elif (t+1) == ntsteps:
+#                        data[sent, 2] += 1
+#                        break
+            else:
+                xhist[t, 0:3] = 0
+                xhist[t, 4] = 0
+#                xhist[t,0:3] = np.clip(noise[t,0:3], -0.1, 1.1)
+#                xhist[t,4] = np.clip(noise[t,4], -0.01, 1.01)
+                if t == 400:
+                    xhist[t,5] += adj
+            
+#                if t >= 800:
+#                    if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
+#                        data[sent, 0] += 1
+#                        break
+#                    elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
+#                        data[sent, 1] += 1
+#                        break
+#                    elif (t+1) == ntsteps:
+#                        data[sent, 2] += 1
+#                        break
 
-            # Tallying the final states
-#            final = np.round(xhist[-1,])   
-#            if sent != 3:
-#                if np.all(final == [1, 0, 1, 0, 1, 0]):
-#                    data[length, sent, 0] += 1
-#                elif np.all(final == [0, 1, 0, 1, 0, 1]):
-#                    data[length, sent, 1] += 1
-#                else:
-#                    data[length, sent, 2] += 1
-#            else:
-#                if np.all(final == [1, 0, 1, 0, 1, 0]):
-#                    data[length, sent, 0] += 1
-#                elif np.all(final == [0, 0, 0, 1, 0, 1]):
-#                    data[length, sent, 1] += 1
-#                else:
-#                    data[length, sent, 2] += 1
+        # Tallying the final states
+        final = np.round(xhist[-1,])   
+        if sent == 3 or sent == 7:
+            if np.all(final == [1, 0, 1, 0, 1, 0]):
+                data[sent, 0] += 1
+            elif np.all(final == [0, 0, 0, 1, 0, 1]):
+                data[sent, 1] += 1
+            else:
+                data[sent, 2] += 1
+        else:
+            if np.all(final == [1, 0, 1, 0, 1, 0]):
+                data[sent, 0] += 1
+            elif np.all(final == [0, 1, 0, 1, 0, 1]):
+                data[sent, 1] += 1
+            else:
+                data[sent, 2] += 1
 
 data_scaled = data / nreps
 
 for i in range(len(pp)):
     print('\n{}'.format(pp[i]))
-    print('Containers:\t{}\nCollections:\t{}\nMeasures:\t{}\nQuantifiers:\t{}'.format(*data_scaled[i]))
+    print('Containers:\t{}\nCollections:\t{}\nMeasures:\t{}\nQuantifiers:\t{}'.format(*data_scaled[i:i+4,]))
     
-for i in range(2):
-    plt.plot(data_scaled[i,:, 1], 'o', label=pp[i])
+#for i in range(2):
+plt.plot(data_scaled[0:4, 1], 'o', label=pp[0])
+plt.plot(data_scaled[4:, 1], 'o', label=pp[1])
 plt.legend()
 plt.title('Proportions of N2-headed parses')
 plt.ylim(-0.05, 1.05)

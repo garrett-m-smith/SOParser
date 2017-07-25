@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 #from sklearn.preprocessing import normalize
 
 nlinks = 6
-k = 2
+k = 2.
 #k = 1.1
 W = np.array([[1, k, 0, k, 0, k],
               [k, 1, k, 0, k, 0],
@@ -62,13 +62,14 @@ tau = 0.01
 ntsteps = 10000
 noisemag = 0.001
 nreps = 100
+adj = 0.1
 
 #length = 0
 length = 1
 if length == 0:
-    adj = 0.05
-else:
-    adj = 0.1
+    adj = adj/2.
+#else:
+#    adj = 0.1
     
 if ipt is many_N2:
     x0 = np.array([0, 0, 0, 0.101, 0., 0.001])
@@ -118,6 +119,7 @@ while True:
 #np.savetxt('group-N2-headed.csv', xhist.T, delimiter = ',', fmt = '%6f')
 #np.savetxt('lot-N2-headed.csv', xhist.T, delimiter = ',', fmt = '%6f')
 
+xhist = xhist[~np.all(xhist == 0, axis=1)]
 # Printing out the final vlaues of each link
 for d in range(len(link_names)):
     print('{}:\t{}'.format(link_names[d], np.round(xhist[-1,d], 4)))
