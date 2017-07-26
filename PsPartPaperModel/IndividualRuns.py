@@ -51,11 +51,11 @@ all_sents = np.exp(-np.array(all_sents))
 
 # Uncomment the one you want to try
 #ipt = all_sents[0,] + np.random.uniform(0, 0.001, nlinks) # Container
-ipt = all_sents[1,] + np.random.uniform(0, 0.001, nlinks) # Collection
+#ipt = all_sents[1,] + np.random.uniform(0, 0.001, nlinks) # Collection
 #ipt = all_sents[2,] + np.random.uniform(0, 0.001, nlinks) # Measure
 #all_sents[3,3] -= np.random.uniform(0, 0.001, 1)
 #all_sents[3,5] -= np.random.uniform(0, 0.001, 1)
-#ipt = all_sents[3,] # Quant
+ipt = all_sents[3,] # Quant
 
 #tau = 1.
 tau = 0.01
@@ -105,11 +105,12 @@ while True:
         xhist[t,4] = np.clip(noise[t,4], -0.01, 1.01)
         if t == 400:
             xhist[t,5] += adj
-    if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
-        break
-    elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
-        break
-    elif t == ntsteps:
+#    if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
+#        break
+#    elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
+#        break
+#    elif t == ntsteps:
+    if t == ntsteps-1:
         break
 
 

@@ -49,10 +49,10 @@ group_of_N2_pp = np.array([1., 2, 2, 2, 2, 0])
 lot_of_N2_pp = np.array([3., 2, 2, 2, 2, 0])
 many_N2_pp = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
 
-box_of_N2_no = np.array([0., 2, 2, 2, 2, 1])
-group_of_N2_no = np.array([1., 2, 2, 2, 2, 1])
-lot_of_N2_no = np.array([3., 2, 2, 2, 2, 1])
-many_N2_no = np.array([np.inf, np.inf, np.inf, 0, np.inf, 1])
+box_of_N2_no = np.array([0., 2, 2, 2, 2, 3])
+group_of_N2_no = np.array([1., 2, 2, 2, 2, 3])
+lot_of_N2_no = np.array([3., 2, 2, 2, 2, 3])
+many_N2_no = np.array([np.inf, np.inf, np.inf, 0, np.inf, 3])
 
 all_sents = [box_of_N2_pp, group_of_N2_pp, lot_of_N2_pp, many_N2_pp, box_of_N2_no, group_of_N2_no, lot_of_N2_no, many_N2_no]
 #all_sents = np.array(all_sents)
@@ -74,12 +74,10 @@ W = np.array([[1, k, 0, k, 0, k],
 
 ## Monte Carlo
 tau = 0.01
-#tau = 1.
 ntsteps = 10000
 noisemag = 0.001
 nreps = 100
 adj = 0.1
-#adj0 = 0.009625
 
 # For saving final states; dims: length, N1 Type, parse type(N1, N2, other)
 data = np.zeros((len(all_sents), 3))
@@ -97,21 +95,22 @@ data = np.zeros((len(all_sents), 3))
 #        adj = adj0
         
 for sent in range(all_sents.shape[0]):
+#for sent in range(7, 8):
     # Set current input
     ipt = all_sents[sent,]
     print('\tStarting sentence {}'.format(sent))
     
     for rep in range(nreps):
         # For each repetition, reset history and noise
-        if sent == 3:
+        if sent == 3 or sent == 7:
             # Minus to keep < 1
 #            all_sents[3,3] -= np.random.uniform(0, 0.001, 1)
 #            all_sents[3,5] -= np.random.uniform(0, 0.001, 1)
-            ipt = all_sents[3,]
+#            ipt = all_sents[3,]
             x0 = np.array([0, 0, 0, 0.101, 0., 0.001])
 #               x0 = np.array([0, 0, 0, 0.011, 0., 0.001])
         else:
-            ipt = all_sents[sent,] #+ np.random.uniform(0, 0.001, nlinks)
+#            ipt = all_sents[sent,] #+ np.random.uniform(0, 0.001, nlinks)
             x0 = np.array([0.001]*nlinks)
             x0[0] += 0.1
 #               x0[0] += 0.01
@@ -130,7 +129,7 @@ for sent in range(all_sents.shape[0]):
             xhist[t,:] = np.clip(xhist[t-1,] + tau * (ipt * xhist[t-1,] 
             * (1 - W @ xhist[t-1,])) + noise[t-1,:], -0.01, 1.01)
 
-            if sent != 3:
+            if sent != 3 and sent != 7:
                 if t == 400:
                     xhist[t,1] += adj
                     xhist[t,2] += adj
@@ -149,10 +148,10 @@ for sent in range(all_sents.shape[0]):
             else:
                 xhist[t, 0:3] = 0
                 xhist[t, 4] = 0
-#                xhist[t,0:3] = np.clip(noise[t,0:3], -0.1, 1.1)
+#                xhist[t,0:3] = np.clip(noise[t,0:3], -0.01, 1.01)
 #                xhist[t,4] = np.clip(noise[t,4], -0.01, 1.01)
                 if t == 400:
-                    xhist[t,5] += adj
+                    xhist[t,5] += 5*adj
             
 #                if t >= 800:
 #                    if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
@@ -184,9 +183,11 @@ for sent in range(all_sents.shape[0]):
 
 data_scaled = data / nreps
 
-for i in range(len(pp)):
-    print('\n{}'.format(pp[i]))
-    print('Containers:\t{}\nCollections:\t{}\nMeasures:\t{}\nQuantifiers:\t{}'.format(*data_scaled[i:i+4,]))
+#for i in range(len(pp)):
+print('\n{}'.format(pp[0]))
+print('Containers:\t{}\nCollections:\t{}\nMeasures:\t{}\nQuantifiers:\t{}'.format(*data_scaled[:4,]))
+print('\n{}'.format(pp[1]))
+print('Containers:\t{}\nCollections:\t{}\nMeasures:\t{}\nQuantifiers:\t{}'.format(*data_scaled[4:,]))
     
 #for i in range(2):
 plt.plot(data_scaled[0:4, 1], 'o', label=pp[0])
