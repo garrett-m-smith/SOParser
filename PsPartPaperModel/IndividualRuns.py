@@ -10,8 +10,23 @@ import matplotlib.pyplot as plt
 #from sklearn.preprocessing import normalize
 
 nlinks = 6
+link_names = ['N1-Verb', 'N1-of', 'of-N1', 'of-N2', 'N2-of', 'N2-V']
+pp = ['+PP', '-PP']
+
+box_of_N2_pp = np.array([0., 1, 1, 1, 1, 0])
+group_of_N2_pp = np.array([1., 1, 1, 1, 1, 0])
+lot_of_N2_pp = np.array([3., 1, 1, 1, 1, 0])
+many_N2_pp = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
+
+box_of_N2_no = np.array([0., 2, 2, 2, 2, 1])
+group_of_N2_no = np.array([1., 2, 2, 2, 2, 1])
+lot_of_N2_no = np.array([3., 2, 2, 2, 2, 1])
+many_N2_no = np.array([np.inf, np.inf, np.inf, 0, np.inf, 1])
+
+all_sents = [box_of_N2_pp, group_of_N2_pp, lot_of_N2_pp, many_N2_pp, box_of_N2_no, group_of_N2_no, lot_of_N2_no, many_N2_no]
+all_sents = np.exp(-np.array(all_sents))
+
 k = 2.
-#k = 1.1
 W = np.array([[1, k, 0, k, 0, k],
               [k, 1, k, 0, k, 0],
               [0, k, 1, k, 0, k],
@@ -19,99 +34,100 @@ W = np.array([[1, k, 0, k, 0, k],
               [0, k, 0, k, 1, k],
               [k, 0, k, 0, k, 1]])
 
-link_names = ['N1-Verb', 'N1-of', 'of-N1', 'of-N2', 'N2-of', 'N2-V']
-
-# Params from CUNY 2017: made up
-#box_of_N2 = np.array([0.9, 0.3, 0.9, 0.9, 0.9, 0.9])
-#group_of_N2 = np.array([0.6, 0.6, 0.6, 0.9, 0.9, 0.9])
-#lot_of_N2 = np.array([0.3, 0.9, 0.3, 0.9, 0.9, 0.9])
-#many_N2 = np.array([0, 0, 0, 0.9, 0., 0.9])
-
-# Feature matches
-#box_of_N2 = np.array([3., 0, 3, 0, 3, 3])
-#group_of_N2 = np.array([1., 1, 1, 1, 3, 3])
-#lot_of_N2 = np.array([0., 3, 0, 3, 3, 3])
-#many_N2 = np.array([0., 0, 0, 3, 0, 3])
-
-# Manhattan distances
-#box_of_N2 = np.array([0., 3, 0, 3, 0, 0])
-#group_of_N2 = np.array([2., 2, 2, 2, 0, 0])
-#lot_of_N2 = np.array([3., 0, 3, 0, 0, 0])
-#many_N2 = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
-
-box_of_N2 = np.array([0., 3, 0, 3, 0, 0])
-group_of_N2 = np.array([2., 2, 2, 2, 2, 0])
-lot_of_N2 = np.array([3., 0, 3, 0, 3, 0])
-many_N2 = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
-
-all_sents = [box_of_N2, group_of_N2, lot_of_N2, many_N2]
-# Similarity
-#all_sents = normalize(np.exp(-np.array(all_sents)), norm='l2', axis=1)
-all_sents = np.exp(-np.array(all_sents))
-
-# Uncomment the one you want to try
-#ipt = all_sents[0,] + np.random.uniform(0, 0.001, nlinks) # Container
-#ipt = all_sents[1,] + np.random.uniform(0, 0.001, nlinks) # Collection
-#ipt = all_sents[2,] + np.random.uniform(0, 0.001, nlinks) # Measure
-#all_sents[3,3] -= np.random.uniform(0, 0.001, 1)
-#all_sents[3,5] -= np.random.uniform(0, 0.001, 1)
-ipt = all_sents[3,] # Quant
-
-#tau = 1.
+## Monte Carlo
 tau = 0.01
-ntsteps = 10000
+ntsteps = 20000
 noisemag = 0.001
-nreps = 100
+nreps = 200
 adj = 0.1
-
-#length = 0
-length = 1
-if length == 0:
-    adj = adj/2.
-#else:
-#    adj = 0.1
+        
+#for sent in range(all_sents.shape[0]):
+for sent in [6]:
+    ipt = all_sents[sent,]
+    print('\tStarting sentence {}'.format(sent))
     
-if ipt is many_N2:
-    x0 = np.array([0, 0, 0, 0.101, 0., 0.001])
-else:
-    x0 = np.array([0.001]*nlinks)
-    x0[0] += 0.1
-    
-xhist = np.zeros((ntsteps, nlinks))
-xhist[0,] = x0
-noise = np.sqrt(tau*noisemag) * np.random.normal(0, 1, xhist.shape)
+    for rep in range(nreps):
+        # For each repetition, reset history and noise
+        if sent == 3 or sent == 7:
+            x0 = np.array([0, 0, 0, 0.101, 0., 0.001])
+        else:
+            x0 = np.array([0.001]*nlinks)
+            x0[0] += 0.1
+        xhist = np.zeros((ntsteps, nlinks))
+        xhist[0,] = x0
+        noise = np.sqrt(tau*noisemag) * np.random.normal(0, 1, xhist.shape)
+            
+        t = 0
+#        while True:
+        while t < ntsteps-1:
+            t += 1
+#            xhist[t,:] = np.clip(xhist[t-1,] + tau * (ipt * xhist[t-1,] 
+#            * (1 - W @ xhist[t-1,])) + noise[t-1,:], -0.01, 1.01)
+            xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
+            * (ipt - W @ (ipt * xhist[t-1,]))) + noise[t-1,:], -0.01, 1.01)
 
-# Individual runs
-#for t in range(1, ntsteps):
-t = 0
-while True:
-    t += 1
-    # Euler forward dynamics
-#                xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
-#                * (ipt - W @ (ipt * xhist[t-1,])) + noise[t,:]), -0.1, 1.1)
-#    xhist[t,:] = np.clip(xhist[t-1,] + tau * (xhist[t-1,] 
-#    * (ipt - W @ (ipt * xhist[t-1,]))) + noise[t,:], -0.01, 1.01)
-    xhist[t,:] = np.clip(xhist[t-1,] + tau * (ipt * xhist[t-1,] 
-    * (1 - W @ xhist[t-1,])) + noise[t,:], -0.01, 1.01)
-
-    if not np.all(ipt == all_sents[3,]):
-        if t == 400:
-            xhist[t,1] += adj
-            xhist[t,2] += adj
-        if t == 800:
-            xhist[t,3:] += adj
-    else:
-        xhist[t,0:3] = np.clip(noise[t,0:3], -0.1, 1.1)
-        xhist[t,4] = np.clip(noise[t,4], -0.01, 1.01)
-        if t == 400:
-            xhist[t,5] += adj
-#    if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
-#        break
-#    elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
-#        break
-#    elif t == ntsteps:
-    if t == ntsteps-1:
-        break
+#            if sent != 3 and sent != 7:
+            if sent < 3:
+                if t == 400:
+                    xhist[t,1] += adj
+                    xhist[t,2] += adj
+                if t == 800:
+                    xhist[t,3:] += adj
+                if t >= 1200:
+                    if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
+#                        data[sent, 0] += 1
+                        break
+                    elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
+#                        data[sent, 1] += 1
+                        break
+                    elif (t+1) == ntsteps:
+#                        data[sent, 2] += 1
+                        break
+            elif sent == 3:
+                xhist[t, 0:3] = 0
+                xhist[t, 4] = 0
+                if t == 400:
+                    xhist[t,5] += adj
+            
+                if t >= 800:
+                    if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
+#                        data[sent, 0] += 1
+                        break
+                    elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
+#                        data[sent, 1] += 1
+                        break
+                    elif (t+1) == ntsteps:
+#                        data[sent, 2] += 1
+                        break
+            elif sent > 3 and sent < 7:
+                # Assuming the elided material all comes in at once
+                if t == 400:
+                    xhist[t,1:] += adj
+                if t > 400:
+                    if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
+#                        data[sent, 0] += 1
+                        break
+                    elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
+#                        data[sent, 1] += 1
+                        break
+                    elif (t+1) == ntsteps:
+#                        data[sent, 2] += 1
+                        break
+            else:
+                if t == 400:
+                    xhist[t,-1] += adj
+                xhist[t, 0:3] = 0
+                xhist[t, 4] = 0
+                if t > 400:
+                    if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
+#                        data[sent, 0] += 1
+                        break
+                    elif xhist[t,0] < 0.5 and xhist[t,-1] > 0.5:
+#                        data[sent, 1] += 1
+                        break
+                    elif (t+1) == ntsteps:
+#                        data[sent, 2] += 1
+                        break
 
 
 # If you want to save individual trajectories as CSVs
