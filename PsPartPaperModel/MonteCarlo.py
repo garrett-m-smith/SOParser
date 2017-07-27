@@ -73,8 +73,9 @@ all_sents = np.exp(-np.array(all_sents))
 # Interaction matrix: specifies which links enter into WTA competitions. The
 # parameter k determines the relative strength of inhibition from other links
 # to a link's self-inhibition
-#k = 2.
-k = 1.1
+k = 0.55 # gets even better fit. Need to look at individual runs, though...
+# and also do a stability analysis to see if things still look the way they should
+#k = 1.1 # works
 W = np.array([[1, k, 0, k, 0, k],
               [k, 1, k, 0, k, 0],
               [0, k, 1, k, 0, k],
@@ -85,8 +86,9 @@ W = np.array([[1, k, 0, k, 0, k],
 ## Monte Carlo
 tau = 0.01
 ntsteps = 10000
-noisemag = 0.001
-nreps = 2000
+noisemag = 0.001 # works!
+#nreps = 2000
+nreps = 500
 adj = 0.1
 
 # For saving final states; dims: length, N1 Type, parse type(N1, N2, other)
@@ -246,10 +248,11 @@ human_data = np.array([[137, 97, 0],
                        [27, 206, 0]])
 human_data = human_data / human_data.sum(axis=1)[:,None]
 
+plt.figure(figsize=(10,6))
 plt.plot(data_scaled[0:4, 1], 'b^', label=pp[0]+' Model')
 plt.plot(data_scaled[4:, 1], 'bo', label=pp[1]+' Model')
-plt.plot(human_data[0:4, 1], 'y^', label=pp[0]+' Human')
-plt.plot(human_data[4:, 1], 'yo', label=pp[1]+' Human')
+plt.plot([0.1, 1.1, 2.1, 3.1], human_data[0:4, 1], 'y^', label=pp[0]+' Human')
+plt.plot([0.1, 1.1, 2.1, 3.1], human_data[4:, 1], 'yo', label=pp[1]+' Human')
 plt.legend()
 plt.title('Proportions of N2-headed parses')
 plt.ylim(-0.05, 1.05)
