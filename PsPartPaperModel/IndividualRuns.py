@@ -26,7 +26,8 @@ many_N2_no = np.array([np.inf, np.inf, np.inf, 0, np.inf, 1])
 all_sents = [box_of_N2_pp, group_of_N2_pp, lot_of_N2_pp, many_N2_pp, box_of_N2_no, group_of_N2_no, lot_of_N2_no, many_N2_no]
 all_sents = np.exp(-np.array(all_sents))
 
-k = 2.
+#k = 2.
+k = 0.5
 W = np.array([[1, k, 0, k, 0, k],
               [k, 1, k, 0, k, 0],
               [0, k, 1, k, 0, k],
@@ -42,7 +43,7 @@ nreps = 200
 adj = 0.1
         
 #for sent in range(all_sents.shape[0]):
-for sent in [6]:
+for sent in [0]:
     ipt = all_sents[sent,]
     print('\tStarting sentence {}'.format(sent))
     

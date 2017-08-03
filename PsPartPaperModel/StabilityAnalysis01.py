@@ -9,9 +9,11 @@ Created on Mon Jul 31 10:24:38 2017
 
 import numpy as np
 from sympy import symbols, Matrix, re#, solve#, init_printing
-#from sympy.solvers.solveset import nonlinsolve
+from sympy.solvers.solveset import nonlinsolve
+#from scipy.optimize import fsolve
 
 
+nlinks = 6
 x0, x1, x2, x3, x4, x5 = symbols('x:6', real=True)
 k = symbols('k')
 sys = Matrix([x0 * (1. - x0 - k * (x1 + x3 + x5)),
@@ -22,7 +24,7 @@ sys = Matrix([x0 * (1. - x0 - k * (x1 + x3 + x5)),
               x5 * (1. - x5 - k * (x0 + x2 + x4))])
 
 jac = sys.jacobian([x0, x1, x2, x3, x4, x5])
-#genera_solns = nonlinsolve(sys, [x0, x1, x2, x3, x4, x5])
+genera_solns = nonlinsolve(sys, [x0, x1, x2, x3, x4, x5])
 
 k_range = np.linspace(-2., 2., 200)
 
@@ -59,3 +61,24 @@ for i in range(len(k_range)):
 # attractors at (I'm pretty sure) k = 1/3. Can't say much about the other
 # fixed points, but this at least is good.
 
+# Trying a numerical method
+# Issue: only approximations, so looking at eigenvals could be misleading...
+#def sys_num(x):
+#    k = 1.0
+#    x0, x1, x2, x3, x4, x5 = x
+#    dx0 = x0 * (1. - x0 - k * (x1 + x3 + x5))
+#    dx1 = x1 * (1. - x1 - k * (x0 + x2 + x4))
+#    dx2 = x2 * (1. - x2 - k * (x1 + x3 + x5))
+#    dx3 = x3 * (1. - x3 - k * (x0 + x2 + x4))
+#    dx4 = x4 * (1. - x4 - k * (x1 + x3 + x5))
+#    dx5 = x5 * (1. - x5 - k * (x0 + x2 + x4))
+#    return(dx0, dx1, dx2, dx3, dx4, dx5)
+#
+#solns = []
+#for i in range(1000):
+##    if i % 10 == 0: print(i)
+#    rand_init = np.random.uniform(-0.5, 1.5, nlinks).tolist()
+#    s = np.round(fsolve(sys_num, rand_init), 2)
+#    if not any((s == x).all() for x in solns):
+#        solns.append(s)
+#

@@ -144,8 +144,8 @@ def agr_attr(model_data):
 
 # Doing sensitivity
 #noise_vec = np.array([0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001])
-noise_vec = np.linspace(0.0001, 0.1, 20)
-k_vec = np.linspace(0.5, 1.5, 20)
+noise_vec = np.linspace(0.0001, 0.1, 40)
+k_vec = np.linspace(0.35, 2., 40)
 #adj_vec = np.linspace(0.0, 1.0, 100)
 adj = 0.1 # 
 #errors = np.zeros(len(adj_vec))

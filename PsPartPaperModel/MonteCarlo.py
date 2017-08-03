@@ -73,7 +73,8 @@ all_sents = np.exp(-np.array(all_sents))
 # Interaction matrix: specifies which links enter into WTA competitions. The
 # parameter k determines the relative strength of inhibition from other links
 # to a link's self-inhibition
-k = 0.55 # gets even better fit. Need to look at individual runs, though...
+k = 0.5 # gets even better fit. Need to look at individual runs, though...
+#k = 1.01
 # and also do a stability analysis to see if things still look the way they should
 #k = 1.1 # works
 W = np.array([[1, k, 0, k, 0, k],
@@ -88,7 +89,7 @@ tau = 0.01
 ntsteps = 10000
 noisemag = 0.001 # works!
 #nreps = 2000
-nreps = 500
+nreps = 100
 adj = 0.1
 
 # For saving final states; dims: length, N1 Type, parse type(N1, N2, other)
