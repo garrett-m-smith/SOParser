@@ -161,7 +161,7 @@ for i in range(len(noise_vec)):
         attr_eff[i,j] = agr_attr(distr)
 
 plt.figure(figsize=(6, 6))
-plt.pcolor(noise_vec, k_vec, errors)
+plt.pcolor(noise_vec, k_vec, errors.T)
 plt.colorbar()
 plt.title('SSE')
 plt.ylabel('Competition parameter k')
@@ -169,7 +169,17 @@ plt.xlabel('Noise magnitude')
 plt.show()
 
 plt.figure(figsize=(6, 6))
-plt.pcolor(noise_vec, k_vec, attr_eff)
+plt.pcolor(noise_vec, k_vec, attr_eff.T)
+plt.colorbar()
+plt.title('Avg. agreement attraction effect\nContainers through Measures')
+plt.ylabel('Competition parameter k')
+plt.xlabel('Noise magnitude')
+plt.show()
+
+attr_eff2 = attr_eff
+attr_eff2[attr_eff2 < 0] = 0
+plt.figure(figsize=(6, 6))
+plt.pcolor(noise_vec, k_vec, attr_eff2.T)
 plt.colorbar()
 plt.title('Avg. agreement attraction effect\nContainers through Measures')
 plt.ylabel('Competition parameter k')

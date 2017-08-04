@@ -10,6 +10,7 @@ Created on Mon Jul 31 10:24:38 2017
 import numpy as np
 from sympy import symbols, Matrix, re#, solve#, init_printing
 from sympy.solvers.solveset import nonlinsolve
+from sympy import solve
 #from scipy.optimize import fsolve
 
 
@@ -24,8 +25,9 @@ sys = Matrix([x0 * (1. - x0 - k * (x1 + x3 + x5)),
               x5 * (1. - x5 - k * (x0 + x2 + x4))])
 
 jac = sys.jacobian([x0, x1, x2, x3, x4, x5])
-genera_solns = nonlinsolve(sys, [x0, x1, x2, x3, x4, x5])
-
+#genera_solns = nonlinsolve(sys, [x0, x1, x2, x3, x4, x5]) # never finishes
+#solns2 = solve(sys, [x0, x1, x2, x3, x4, x5], simplify=False) # Works
+solns = np.load('../PsPartPaperModel/PsPartFixedPoints.npy')
 k_range = np.linspace(-2., 2., 200)
 
 # Trying out a range of k values. Each list will hold the k values for which
