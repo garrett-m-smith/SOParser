@@ -13,22 +13,23 @@ import matplotlib.pyplot as plt
 
 def dyn(k0, adj0, noise0):
     nlinks = 6
+    isi = 100
 
-    box_of_N2_pp = np.array([0., 1, 1, 1, 1, 0])
-    group_of_N2_pp = np.array([1., 1, 1, 1, 1, 0])
-    lot_of_N2_pp = np.array([3., 1, 1, 1, 1, 0])
+    box_of_N2_pp = np.array([0., 0, 1, 1, 0, 0])
+    group_of_N2_pp = np.array([1., 0, 1, 1, 0, 0])
+    lot_of_N2_pp = np.array([3., 0, 1, 1, 0, 0])
     many_N2_pp = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
 
-    box_of_N2_no = np.array([0., 2, 2, 2, 2, 1])
-    group_of_N2_no = np.array([1., 2, 2, 2, 2, 1])
-    lot_of_N2_no = np.array([3., 2, 2, 2, 2, 1])
+    box_of_N2_no = np.array([0., 1, 2, 2, 1, 1])
+    group_of_N2_no = np.array([1., 1, 2, 2, 1, 1])
+    lot_of_N2_no = np.array([3., 1, 2, 2, 1, 1])
     many_N2_no = np.array([np.inf, np.inf, np.inf, 0, np.inf, 1])
     all_sents = [box_of_N2_pp, group_of_N2_pp, lot_of_N2_pp, many_N2_pp, box_of_N2_no, group_of_N2_no, lot_of_N2_no, many_N2_no]
     all_sents = np.exp(-np.array(all_sents))
 
     # Monte Carlo
     tau = 0.01
-    ntsteps = 10000
+    ntsteps = 30000
     noisemag = noise0
     nreps = 50
     k = k0
@@ -42,7 +43,6 @@ def dyn(k0, adj0, noise0):
     data = np.zeros((len(all_sents), 3))
     for sent in range(all_sents.shape[0]):
         ipt = all_sents[sent, ]
-#        print('\tStarting sentence {}'.format(sent))
     
         for rep in range(nreps):
             # For each repetition, reset history and noise
@@ -62,17 +62,26 @@ def dyn(k0, adj0, noise0):
                 xhist[t, :] = np.clip(xhist[t-1, ] + tau * (ipt * xhist[t-1, ]
                 * (1 - W @ xhist[t-1, ])) + noise[t-1, :], -0.01, 1.01)
 
+                test_n1 = ((xhist[t, 0] > 0.5 > xhist[t, -1])
+                           or (xhist[t, 1] > 0.5 > xhist[t, -2])
+                           or (xhist[t, 2] > 0.5 > xhist[t, -3]))
+                test_n2 = ((xhist[t, -1] > 0.5 > xhist[t, 0])
+                           or (xhist[t, -2] > 0.5 > xhist[t, 1])
+                           or (xhist[t, -3] > 0.5 > xhist[t, 2]))
+
                 if sent < 3:
-                    if t == 400:
+                    if t == isi:
                         xhist[t, 1] += adj0
                         xhist[t, 2] += adj0
-                    if t == 800:
+                    if t == 2*isi:
                         xhist[t, 3:] += adj0
-                    if t >= 1200:
+                    if t >= 3*isi:
                         if xhist[t, 0] > 0.5 and xhist[t, -1] < 0.5:
+#                        if test_n1:
                             data[sent, 0] += 1
                             break
                         elif xhist[t, 0] < 0.5 and xhist[t, -1] > 0.5:
+#                        elif test_n2:
                             data[sent, 1] += 1
                             break
                         elif (t+1) == ntsteps:
@@ -81,9 +90,9 @@ def dyn(k0, adj0, noise0):
                 elif sent == 3:
                     xhist[t, 0:3] = 0
                     xhist[t, 4] = 0
-                    if t == 400:
+                    if t == isi:
                         xhist[t, 5] += adj0
-                    if t >= 800:
+                    if t >= 2*isi:
                         if xhist[t, 0] > 0.5 and xhist[t, -1] < 0.5:
                             data[sent, 0] += 1
                             break
@@ -95,11 +104,13 @@ def dyn(k0, adj0, noise0):
                             break
                 elif sent > 3 and sent < 7:
                     # Assuming the elided material all comes in at once
-                    if t > 400:
+                    if t > isi:
                         if xhist[t, 0] > 0.5 and xhist[t, -1] < 0.5:
+#                        if test_n1:
                             data[sent, 0] += 1
                             break
                         elif xhist[t, 0] < 0.5 and xhist[t, -1] > 0.5:
+#                        elif test_n2:
                             data[sent, 1] += 1
                             break
                         elif (t+1) == ntsteps:
@@ -108,7 +119,7 @@ def dyn(k0, adj0, noise0):
                 else:
                     xhist[t, 0:3] = 0
                     xhist[t, 4] = 0
-                    if t > 400:
+                    if t > isi:
                         if xhist[t, 0] > 0.5 and xhist[t, -1] < 0.5:
                             data[sent, 0] += 1
                             break
@@ -142,17 +153,12 @@ def agr_attr(model_data):
     return np.sum(model_data[0:3,1] - model_data[4:7,1]) / 3.
 
 # Doing sensitivity
-#noise_vec = np.array([0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001])
-noise_vec = np.linspace(0.0001, 0.1, 30)
-#k_vec = np.linspace(0.35, 2., 40)
-k_vec = np.linspace(1.0, 2, 30)
-#adj_vec = np.linspace(0.0, 1.0, 100)
+noise_vec = np.linspace(0.0001, 0.1, 20)
+k_vec = np.linspace(1.0, 2, 20)
 adj = 0.1 # 
-#errors = np.zeros(len(adj_vec))
 errors = np.zeros((len(noise_vec), len(k_vec)))
-#attr_eff = np.zeros((len(adj_vec), 4))
 attr_eff = np.zeros((len(noise_vec), len(k_vec)))
-#for i in range(len(adj_vec)):
+
 for i in range(len(noise_vec)):
     for j in range(len(k_vec)):
         if j % 10 == 0:
@@ -161,45 +167,23 @@ for i in range(len(noise_vec)):
         errors[i, j] = sse(distr)
         attr_eff[i, j] = agr_attr(distr)
 
-plt.figure(figsize=(6, 6))
+plt.figure(num=0, figsize=(5.5, 4))
 plt.pcolor(noise_vec, k_vec, errors.T)
 plt.colorbar()
-plt.title('SSE')
+plt.title('Sum squared error')
 plt.ylabel('Competition parameter k')
 plt.xlabel('Noise magnitude')
 plt.show()
+#plt.savefig('Sensitivity_k_noise_SSE.tiff', format='tiff', dpi=300)
 
-plt.figure(figsize=(6, 6))
+plt.figure(num=1, figsize=(5.5, 4))
 plt.pcolor(noise_vec, k_vec, attr_eff.T)
 plt.colorbar()
-plt.title('Avg. agreement attraction effect\nContainers through Measures')
+plt.title('Average agreement attraction effect size')
 plt.ylabel('Competition parameter k')
 plt.xlabel('Noise magnitude')
 plt.show()
+#plt.savefig('Sensitivity_k_noise_Agr_Attr.tiff', format='tiff', dpi=300)
 
-attr_eff2 = attr_eff
-attr_eff2[attr_eff2 < 0] = 0
-plt.figure(figsize=(6, 6))
-plt.pcolor(noise_vec, k_vec, attr_eff2.T)
-plt.colorbar()
-plt.title('Avg. agreement attraction effect\nContainers through Measures')
-plt.ylabel('Competition parameter k')
-plt.xlabel('Noise magnitude')
-plt.show()
-
-#plt.figure(figsize=(6, 4))
-#plt.plot(adj_vec, errors)
-#plt.ylabel('SSE')
-#plt.xlabel('Adj')
-#plt.title('Effect of boost magnitude on error')
-#plt.show()
-#
-#labels = ['Containers', 'Collections', 'Measures', 'Quantifiers']
-#plt.figure(figsize=(6, 4))
-#for i in range(4):
-#    plt.plot(adj_vec, attr_eff[:,i], label=labels[i])
-#plt.legend()
-#plt.ylabel('+PP - -PP')
-#plt.xlabel('Adj')
-#plt.title('Effect of boost magnitude on agreement attraction')
-#plt.show()
+#np.save('./SensitivityAgrAttr', attr_eff)
+#np.save('./SensitivitySSE', errors)

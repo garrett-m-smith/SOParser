@@ -13,21 +13,31 @@ nlinks = 6
 link_names = ['N1-Verb', 'N1-of', 'of-N1', 'of-N2', 'N2-of', 'N2-V']
 pp = ['+PP', '-PP']
 
-box_of_N2_pp = np.array([0., 1, 1, 1, 1, 0])
-group_of_N2_pp = np.array([1., 1, 1, 1, 1, 0])
-lot_of_N2_pp = np.array([3., 1, 1, 1, 1, 0])
+#box_of_N2_pp = np.array([0., 1, 1, 1, 1, 0])
+#group_of_N2_pp = np.array([1., 1, 1, 1, 1, 0])
+#lot_of_N2_pp = np.array([3., 1, 1, 1, 1, 0])
+#many_N2_pp = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
+#
+#box_of_N2_no = np.array([0., 2, 2, 2, 2, 1])
+#group_of_N2_no = np.array([1., 2, 2, 2, 2, 1])
+#lot_of_N2_no = np.array([3., 2, 2, 2, 2, 1])
+#many_N2_no = np.array([np.inf, np.inf, np.inf, 0, np.inf, 1])
+
+box_of_N2_pp = np.array([0., 0, 1, 1, 0, 0])
+group_of_N2_pp = np.array([1., 0, 1, 1, 0, 0])
+lot_of_N2_pp = np.array([3., 0, 1, 1, 0, 0])
 many_N2_pp = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
 
-box_of_N2_no = np.array([0., 2, 2, 2, 2, 1])
-group_of_N2_no = np.array([1., 2, 2, 2, 2, 1])
-lot_of_N2_no = np.array([3., 2, 2, 2, 2, 1])
+box_of_N2_no = np.array([0., 1, 2, 2, 1, 1])
+group_of_N2_no = np.array([1., 1, 2, 2, 1, 1])
+lot_of_N2_no = np.array([3., 1, 2, 2, 1, 1])
 many_N2_no = np.array([np.inf, np.inf, np.inf, 0, np.inf, 1])
 
 all_sents = [box_of_N2_pp, group_of_N2_pp, lot_of_N2_pp, many_N2_pp, box_of_N2_no, group_of_N2_no, lot_of_N2_no, many_N2_no]
 all_sents = np.exp(-np.array(all_sents))
 
-#k = 2.
-k = 0.5
+k = 1.01
+#k = 0.5
 W = np.array([[1, k, 0, k, 0, k],
               [k, 1, k, 0, k, 0],
               [0, k, 1, k, 0, k],
@@ -37,13 +47,14 @@ W = np.array([[1, k, 0, k, 0, k],
 
 ## Monte Carlo
 tau = 0.01
-ntsteps = 20000
+ntsteps = 30000
 noisemag = 0.001
 nreps = 200
 adj = 0.1
+isi = 100
         
 #for sent in range(all_sents.shape[0]):
-for sent in [0]:
+for sent in [6]:
     ipt = all_sents[sent,]
     print('\tStarting sentence {}'.format(sent))
     
@@ -69,12 +80,12 @@ for sent in [0]:
 
 #            if sent != 3 and sent != 7:
             if sent < 3:
-                if t == 400:
+                if t == isi:
                     xhist[t,1] += adj
                     xhist[t,2] += adj
-                if t == 800:
+                if t == 2*isi:
                     xhist[t,3:] += adj
-                if t >= 1200:
+                if t >= 3*isi:
                     if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
 #                        data[sent, 0] += 1
                         break
@@ -87,10 +98,10 @@ for sent in [0]:
             elif sent == 3:
                 xhist[t, 0:3] = 0
                 xhist[t, 4] = 0
-                if t == 400:
+                if t == isi:
                     xhist[t,5] += adj
             
-                if t >= 800:
+                if t >= 2*isi:
                     if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
 #                        data[sent, 0] += 1
                         break
@@ -102,9 +113,9 @@ for sent in [0]:
                         break
             elif sent > 3 and sent < 7:
                 # Assuming the elided material all comes in at once
-                if t == 400:
-                    xhist[t,1:] += adj
-                if t > 400:
+#                if t == isi:
+#                    xhist[t,1:] += adj
+                if t > isi:
                     if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
 #                        data[sent, 0] += 1
                         break
@@ -115,11 +126,11 @@ for sent in [0]:
 #                        data[sent, 2] += 1
                         break
             else:
-                if t == 400:
-                    xhist[t,-1] += adj
+#                if t == 400:
+#                    xhist[t,-1] += adj
                 xhist[t, 0:3] = 0
                 xhist[t, 4] = 0
-                if t > 400:
+                if t > isi:
                     if xhist[t,0] > 0.5 and xhist[t,-1] < 0.5:
 #                        data[sent, 0] += 1
                         break
