@@ -14,23 +14,7 @@ pp = ['+PP', '-PP']
 
 # Setting the LV growth rates to plausible values given our feature cline.
 # Each dimension corresponds to the links in link_labels above.
-#box_of_N2 = np.array([0.9, 0.3, 0.9, 0.9, 0.9, 0.9])
-#group_of_N2 = np.array([0.6, 0.6, 0.6, 0.9, 0.9, 0.9])
-#lot_of_N2 = np.array([0.3, 0.9, 0.3, 0.9, 0.9, 0.9])
-#many_N2 = np.array([0, 0, 0, 0.9, 0., 0.9])
-
-# Also works:
-#box_of_N2_pp = np.array([0., 1, 1, 1, 1, 0])
-#group_of_N2_pp = np.array([1., 1, 1, 1, 1, 0])
-#lot_of_N2_pp = np.array([3., 1, 1, 1, 1, 0])
-#many_N2_pp = np.array([np.inf, np.inf, np.inf, 0, np.inf, 0])
-#
-#box_of_N2_no = np.array([0., 2, 2, 2, 2, 1])
-#group_of_N2_no = np.array([1., 2, 2, 2, 2, 1])
-#lot_of_N2_no = np.array([3., 2, 2, 2, 2, 1])
-#many_N2_no = np.array([np.inf, np.inf, np.inf, 0, np.inf, 1])
-
-# For publication:
+# For publication (Hamming distances between feature vectors for ea. link):
 box_of_N2_pp = np.array([0., 0, 1, 1, 0, 0])
 group_of_N2_pp = np.array([1., 0, 1, 1, 0, 0])
 lot_of_N2_pp = np.array([3., 0, 1, 1, 0, 0])
